@@ -83,6 +83,9 @@ h1, h2, h3, p, span, div { color: #E8EEF4; }
 .nm b { opacity:1; }
 .nm-gate { font-family:'IBM Plex Mono',monospace; font-size:.74rem;
   color:#8A97A5; }
+.notice { border:1px dashed #1E2935; border-radius:9px; padding:8px 12px;
+  color:#8A97A5; font-size:.76rem; font-family:'IBM Plex Mono',monospace;
+  margin:8px 0; }
 .horizon { height:44px; margin:8px -16px 4px;
   background:radial-gradient(120% 130% at 50% 115%,
   rgba(255,180,84,.18), rgba(92,200,255,.06) 55%, transparent 78%); }
@@ -309,6 +312,7 @@ def render_daily(symbol: str, accent: str) -> None:
     try:
         df = daily_history(symbol)
         if len(df) < 30:
+            notice("daily history too short to chart")
             return
         c = df["Close"]
         sma20, sma50 = c.rolling(20).mean(), c.rolling(50).mean()
@@ -326,7 +330,7 @@ def render_daily(symbol: str, accent: str) -> None:
         chart_layout(fig, 300)
         show_chart(fig)
     except Exception:
-        pass  # a missing chart never blocks the page
+        notice("daily chart unavailable — data fetch failed")
 
 
 def render_intraday(symbol: str, plan: dict, accent: str,
@@ -335,9 +339,12 @@ def render_intraday(symbol: str, plan: dict, accent: str,
     try:
         bars = intraday(symbol)
         if not len(bars):
+            notice("no intraday bars yet for this session")
             return
         if abs(float(bars["Close"].iloc[-1]) / live - 1) >= 0.25:
-            return  # 1-min vs daily on different split bases — skip, don't lie
+            # 1-min vs daily on different split bases — skip, don't lie
+            notice("intraday feed on a different adjustment basis — skipped")
+            return
         o, h, l = bars["Open"], bars["High"], bars["Low"]
         c, v = bars["Close"], bars["Volume"]
         # Session VWAP: regular hours only — pre/post prints would skew it.
@@ -377,7 +384,7 @@ def render_intraday(symbol: str, plan: dict, accent: str,
         fig.update_yaxes(showgrid=False, row=2, col=1)
         show_chart(fig)
     except Exception:
-        pass
+        notice("intraday chart unavailable — data fetch failed")
 
 
 def render_payoff(plan: dict, option: dict | None, atr: float,
@@ -387,6 +394,7 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
         entry, stop, target = plan["entry"], plan["stop"], plan["target"]
         shares = plan["shares"]
         if not atr or atr <= 0 or shares <= 0:
+            notice("payoff unavailable for this plan")
             return
         xs = np.linspace(entry - 2 * atr, entry + 2 * atr, 61)
         # Long stock, truncated where the stop or target would close the trade.
@@ -449,12 +457,18 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
             '<th>STOCK P&amp;L</th><th>OPTION P&amp;L</th></tr>'
             + body + '</table>', unsafe_allow_html=True)
     except Exception:
-        pass
+        notice("payoff view unavailable — computation failed")
 
 
 def section(label: str) -> None:
     st.markdown(f'<div class="eyebrow">{label}</div>',
                 unsafe_allow_html=True)
+
+
+def notice(msg: str) -> None:
+    """Compact inline degraded-state marker — a failed fetch shows this,
+    never a blank section and never an exception page."""
+    st.markdown(f'<div class="notice">◌ {msg}</div>', unsafe_allow_html=True)
 
 
 # ------------------------------------------------- component vocabulary ---
@@ -614,7 +628,9 @@ with right:
         st.cache_data.clear()
         st.rerun()
 
-with st.spinner("Scanning the S&P 500 — first load takes about a minute…"):
+with st.spinner("Scanning the S&P 500 — daily history for ~500 names, then "
+                "live quotes. First load takes about a minute; the next 10 "
+                "minutes are served from cache."):
     try:
         res = cached_scan()
     except Exception:
@@ -689,6 +705,12 @@ with tab_today:
     if glance:
         st.markdown('<div style="margin-top:6px">' + "&nbsp;".join(glance)
                     + "</div>", unsafe_allow_html=True)
+
+    q = diag.get("quarantined") or []
+    if q:
+        notice(f'{len(q)} name{"s" if len(q) > 1 else ""} quarantined for '
+               f'split-adjustment mismatch: {", ".join(q)} — details in '
+               f'Settings › diagnostics')
 
 # ------------------------------------------------------------ trade ticket ---
 
