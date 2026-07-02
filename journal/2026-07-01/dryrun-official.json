@@ -1,0 +1,222 @@
+{
+ "schema": 1,
+ "date": "2026-07-01",
+ "stage": "official",
+ "forced": true,
+ "captured_at_et": "2026-07-01T23:04:11.368895-04:00",
+ "phase": "overnight",
+ "asof": "Wed Jul 01, 2026 \u00b7 11:04 PM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "GIS",
+   "name": "General Mills, Inc.",
+   "style": "momentum",
+   "score": 2.07,
+   "live": 37.55,
+   "prev_close": 34.79999923706055,
+   "atr": 1.1153075838570377,
+   "day_pct": 0.07902301216175922,
+   "gap_pct": 0.08390810481779831,
+   "rvol": 2.048084731538366,
+   "atr_pct": 0.029528926935127552,
+   "reasons": [
+    "Gap +8.4% vs prior close",
+    "2.0\u00d7 normal volume pace",
+    "Within 1.0% of its 20-day high",
+    "Daily ATR 3.0% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 37.55,
+    "stop": 36.99,
+    "target": 38.67,
+    "shares": 133,
+    "notional": 4994.0,
+    "risk_dollars": 74.0,
+    "reward_risk": 2.0,
+    "risk_sized": false,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "entry_note": "Enter on strength \u2014 price holding above the opening range.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "GIS260717C00037500",
+    "expiry": "2026-07-17",
+    "dte": 16,
+    "strike": 37.5,
+    "mid": 0.88,
+    "contracts": 22,
+    "cost": 1925.0,
+    "max_loss": 1925.0,
+    "breakeven": 38.38,
+    "open_interest": 17390,
+    "iv": 0.257,
+    "flags": [
+     "wide spread (17% of mid)"
+    ]
+   },
+   "phase": "overnight",
+   "phase_label": "Overnight \u2014 preview for next session",
+   "asof": "Wed Jul 01, 2026 \u00b7 11:04 PM ET"
+  },
+  "mean-reversion": {
+   "symbol": "QCOM",
+   "name": "QUALCOMM Incorporated",
+   "style": "mean-reversion",
+   "score": 1.11,
+   "live": 181.7,
+   "prev_close": 184.7899932861328,
+   "atr": 16.040058870810654,
+   "day_pct": -0.01674491800722977,
+   "gap_pct": -0.00652084320604851,
+   "rvol": 0.9406698537181943,
+   "atr_pct": 0.0881709489460009,
+   "reasons": [
+    "RSI(2) at 7 \u2014 short-term washout",
+    "-3.9% over 3 sessions, still above its 200-day",
+    "1.5\u03c3 below its 20-day mean",
+    "Daily ATR 8.8% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 181.7,
+    "stop": 172.07,
+    "target": 194.53,
+    "shares": 27,
+    "notional": 4906.0,
+    "risk_dollars": 260.0,
+    "reward_risk": 1.3,
+    "risk_sized": false,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "entry_note": "Enter the flush \u2014 scale in near the reference, not chasing green.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "QCOM260702C00180000",
+    "expiry": "2026-07-02",
+    "dte": 1,
+    "strike": 180.0,
+    "mid": 4.2,
+    "contracts": 4,
+    "cost": 1680.0,
+    "max_loss": 1680.0,
+    "breakeven": 184.2,
+    "open_interest": 169,
+    "iv": 0.833,
+    "flags": [
+     "thin open interest"
+    ]
+   },
+   "phase": "overnight",
+   "phase_label": "Overnight \u2014 preview for next session",
+   "asof": "Wed Jul 01, 2026 \u00b7 11:04 PM ET"
+  }
+ },
+ "gates": {
+  "GIS": [],
+  "AXON": [],
+  "QCOM": [],
+  "MU": [
+   "RSI2>10"
+  ],
+  "COHR": [
+   "RSI2>10"
+  ]
+ },
+ "watchlist": [
+  {
+   "symbol": "GIS",
+   "style": "momentum",
+   "score": 2.072,
+   "live": 37.55,
+   "prev_close": 34.8,
+   "day_pct": 0.079,
+   "gap_pct": 0.0839,
+   "rvol": 2.0481,
+   "atr_pct": 0.0295,
+   "rsi2": 80.1716,
+   "atr": 1.1153,
+   "prev_low": 34.8
+  },
+  {
+   "symbol": "AXON",
+   "style": "momentum",
+   "score": 1.1425,
+   "live": 595.02,
+   "prev_close": 560.61,
+   "day_pct": 0.0614,
+   "gap_pct": 0.0358,
+   "rvol": 1.4327,
+   "atr_pct": 0.0555,
+   "rsi2": 98.8037,
+   "atr": 32.9865,
+   "prev_low": 520.13
+  },
+  {
+   "symbol": "QCOM",
+   "style": "mean-reversion",
+   "score": 1.1131,
+   "live": 181.6957,
+   "prev_close": 184.79,
+   "day_pct": -0.0167,
+   "gap_pct": -0.0065,
+   "rvol": 0.9407,
+   "atr_pct": 0.0882,
+   "rsi2": 6.5945,
+   "atr": 16.0401,
+   "prev_low": 183.5
+  },
+  {
+   "symbol": "MU",
+   "style": "mean-reversion",
+   "score": 1.0934,
+   "live": 1020.1,
+   "prev_close": 1154.29,
+   "day_pct": -0.1163,
+   "gap_pct": -0.0626,
+   "rvol": 0.8664,
+   "atr_pct": 0.0926,
+   "rsi2": 12.4235,
+   "atr": 95.5528,
+   "prev_low": 1124.66
+  },
+  {
+   "symbol": "COHR",
+   "style": "mean-reversion",
+   "score": 1.0059,
+   "live": 367.28,
+   "prev_close": 394.47,
+   "day_pct": -0.0689,
+   "gap_pct": -0.0618,
+   "rvol": 0.7091,
+   "atr_pct": 0.0974,
+   "rsi2": 16.5039,
+   "atr": 35.8991,
+   "prev_low": 381.6
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 495,
+  "stage2": 50,
+  "quarantined": [
+   "CRWD"
+  ],
+  "phase": "overnight",
+  "elapsed_s": 32.4
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
