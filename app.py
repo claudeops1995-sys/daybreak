@@ -146,6 +146,17 @@ table.wl td:first-child { text-align:left; font-weight:600; }
 .stButton>button[kind="primary"]:hover {
   background:#0B0F14; border:1.5px solid #FFB454; color:#E8EEF4; }
 
+/* ---- touch sizing for settings controls ------------------------------- */
+.stNumberInput input, .stTextInput input { min-height:44px; }
+.stCheckbox { padding:6px 0; }
+
+/* ---- 390px canvas: step the dense mono surfaces down one size --------- */
+@media (max-width:430px) {
+  table.wl { font-size:.72rem; }
+  table.wl th, table.wl td { padding:6px 3px; }
+  .stButton>button { font-size:.72rem; padding:8px 8px; }
+}
+
 /* ---- micro-motion: one entrance, CSS-only, reduced-motion aware ------- */
 @keyframes db-rise { from { opacity:0; transform:translateY(6px); }
   to { opacity:1; transform:none; } }
@@ -337,6 +348,7 @@ def render_daily(symbol: str, accent: str) -> None:
                                text=lab, showarrow=False, xshift=14,
                                font=dict(size=9, color=col))
         chart_layout(fig, 300)
+        fig.update_layout(margin=dict(l=8, r=26, t=8, b=8))  # SMA tags
         show_chart(fig)
     except Exception:
         notice("daily chart unavailable — data fetch failed")
@@ -802,7 +814,7 @@ with tab_today:
             render_champion(_sc)
 
 with tab_today:
-    st.markdown("##### Ranked watchlist")
+    section("RANKED WATCHLIST")
     syms = [str(s) for s in wl.index]
 
     # Sticky selection that tolerates a rescan changing the list; defaults
@@ -823,8 +835,8 @@ with tab_today:
         marks = (" ✕" if gates.get(sym) else "") + (
             " E!" if (earn_map.get(sym) or {}).get("status") == "imminent"
             else "")
-        label = (f"{tag}  {sym:<6}{bar}  {float(r['score']):>5.2f}  "
-                 f"${float(r['live']):>9,.2f}  {float(r['day_pct']):+.1%}"
+        label = (f"{tag} {sym:<5} {bar} {float(r['score']):.2f} "
+                 f"{float(r['live']):>8,.2f} {float(r['day_pct']):+.1%}"
                  f"{marks}")
         if st.button(label, key=f"wl_{sym}",
                      type=("primary" if sym == sel else "secondary")):
@@ -878,7 +890,7 @@ def render_journal() -> None:
             regime = f'<span style="color:{col}">{spy:+.1%}</span>'
         for style, sc in rec.get("style_cards", {}).items():
             if sc.get("no_trade"):
-                rows.append(f'<tr style="opacity:.45"><td>{rec["date"]}</td>'
+                rows.append(f'<tr style="opacity:.45"><td>{rec["date"][5:]}</td>'
                             f'<td>{style[:4]}</td><td>no trade</td>'
                             f'<td>—</td><td>—</td><td>—</td><td>—</td>'
                             f'<td>{regime}</td></tr>')
@@ -893,7 +905,7 @@ def render_journal() -> None:
             if mr is not None:
                 stats.setdefault(style, []).append((mr, fr))
             rows.append(
-                f'<tr><td>{rec["date"]}</td><td>{style[:4]}</td>'
+                f'<tr><td>{rec["date"][5:]}</td><td>{style[:4]}</td>'
                 f'<td>{sym}</td>'
                 f'<td>{m.get("exit_reason", "—")}</td>'
                 f'<td>{(f"{mr:+.2f}" if mr is not None else "—")}</td>'
@@ -928,7 +940,7 @@ def render_journal() -> None:
 
 
 with tab_journal:
-    st.markdown("##### Frozen decision points & outcomes")
+    section("FROZEN DECISION POINTS · OUTCOMES")
     render_journal()
 
 # ---------------------------------------------------------------- settings ---

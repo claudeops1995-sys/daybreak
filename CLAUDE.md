@@ -45,14 +45,50 @@ Local Windows dev uses `.venv\Scripts\python.exe` (gitignored).
   ignores. Manual dispatch dry-run of BOTH workflows is the acceptance
   test after any workflow/journal change.
 
+## UI component vocabulary (build from these, never inline-invent)
+
+Dawn tokens: INK `#0B0F14` bg · AMBER `#FFB454` momentum · BLUE `#5CC8FF`
+mean-reversion · RED `#E5484D` stops/warnings · `#C7D2DC` neutral chart
+lines (VWAP, option curve) · Space Grotesk display · IBM Plex Mono
+numerals/labels. Spacing scale **4/8/12/16/24**; radii 14 (cards) / 9
+(nested blocks, buttons) / 5 (chips).
+
+- **Type roles (only three)**: display = Space Grotesk (`.db-wordmark`,
+  `.sym`/`.sym-sm`); label = mono smallcaps (`.eyebrow`, `.chip`, `.lab`,
+  `th`, `.db-pill`); numerals/data = mono (`.meta`, `.px-line`,
+  `.lvl .val`, `td`, buttons, `.notice`). Descriptive sentences (`.sub`,
+  `.why li`, `.foot`) are default sans. No `#####` markdown headings —
+  use `section()` → `.eyebrow`.
+- **Cards**: `.card` + `.card-rule` (dawn hairline) shell; `card_head()`
+  chip row; `levels_html()` entry/stop/target grid; `plan_meta_html()`;
+  `.opt` nested block via `option_block_html()`. Champion, detail,
+  no-trade, and option blocks are all assembled from these helpers.
+- **Chips** via `chip(label, color, variant)`: solid (style, TRIGGERED),
+  outline (STALKING, LATE ENTRY), muted (NO TRADE), warn (EARNINGS).
+  Color rides a `--c` CSS custom property.
+- **Watchlist rows are `st.button` tap targets** (min 44px, mono,
+  `white-space:pre`, unicode `▰▱` score bar); selected row =
+  `type="primary"` (amber border). Selection key `detail_sym` is set
+  manually — no widget owns it.
+- **States**: every degraded fetch path calls `notice()` (dashed inline
+  marker); stale quotes via `quote_stale_txt()` (red >15m); the no-trade
+  card is a designed moment (`.horizon` glow, display-type statement).
+- **Charts family**: `chart_layout()` + `candles()` + `show_chart()` —
+  ink bg, LINE grid, mono axis font, right axis, no toolbar; VWAP and
+  option curves in neutral `#C7D2DC`; payoff shades profit amber .10 /
+  loss red .10; heights 300–340 (phone-first).
+- **Motion**: exactly one entrance animation (`db-rise`, .28s) on
+  `.card`/`.notice`; `prefers-reduced-motion` disables all of it.
+- **390px acceptance**: no horizontal scroll (dense mono surfaces step to
+  .72rem under 430px), interactive elements ≥44px, three type roles only.
+
 ## Conventions (hold these on every change)
 
 - **Dawn design system**: colors/fonts live in the CSS block at the top of
-  `app.py` (AMBER momentum / BLUE mean-reversion / INK background, Space
-  Grotesk + IBM Plex Mono). New UI reuses `.ticket`, `.opt`, `.lvl`,
-  `table.wl`, `.meta` classes rather than inventing new styles.
-- **Mobile-first single column**, max-width 720px. No sidebars, no
-  multi-column layouts beyond the small header row.
+  `app.py`; build new UI from the component vocabulary above.
+- **Mobile-first single column**, max-width 720px, 390px is the primary
+  canvas. No sidebars; columns only for small control rows (header,
+  prev/next chevrons).
 - **Plotly only**, `config={"displayModeBar": False}`, `width="stretch"`
   (never `use_container_width` — deprecated, removal imminent).
 - **Every network fetch** is `@st.cache_data(ttl=600, show_spinner=False)`
