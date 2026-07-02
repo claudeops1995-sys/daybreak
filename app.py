@@ -272,9 +272,40 @@ def option_block_html(symbol: str, o: dict | None,
 
 
 # ---------------------------------------------------------------- charts ---
+# One chart family: shared layout template, shared candle spec, mono axis
+# type, no toolbar, right-side axis. VWAP is neutral (#C7D2DC) so it never
+# collides with a style accent.
+
+VWAP_C = "#C7D2DC"
+
+
+def chart_layout(fig: go.Figure, height: int) -> go.Figure:
+    fig.update_layout(
+        height=height, margin=dict(l=8, r=8, t=8, b=8),
+        paper_bgcolor=INK, plot_bgcolor=INK,
+        font=dict(family="IBM Plex Mono, monospace", color=MUTED, size=11),
+        showlegend=False,
+    )
+    fig.update_xaxes(rangeslider_visible=False, gridcolor=LINE)
+    fig.update_yaxes(gridcolor=LINE, side="right")
+    return fig
+
+
+def show_chart(fig: go.Figure) -> None:
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+
+def candles(df: pd.DataFrame, accent: str) -> go.Candlestick:
+    return go.Candlestick(
+        x=df.index, open=df["Open"], high=df["High"],
+        low=df["Low"], close=df["Close"], showlegend=False,
+        increasing_line_color=accent, decreasing_line_color="#55606c",
+        increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
+    )
+
 
 def render_daily(symbol: str, accent: str) -> None:
-    """3-month daily candlestick with 20/50 SMAs."""
+    """3-month daily candlestick with 20/50 SMAs (annotated, no legend)."""
     try:
         df = daily_history(symbol)
         if len(df) < 30:
@@ -282,29 +313,18 @@ def render_daily(symbol: str, accent: str) -> None:
         c = df["Close"]
         sma20, sma50 = c.rolling(20).mean(), c.rolling(50).mean()
         view = df.iloc[-63:]
-        fig = go.Figure(go.Candlestick(
-            x=view.index, open=view["Open"], high=view["High"],
-            low=view["Low"], close=view["Close"], showlegend=False,
-            increasing_line_color=accent, decreasing_line_color="#55606c",
-            increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
-        ))
-        fig.add_trace(go.Scatter(
-            x=view.index, y=sma20.iloc[-63:], mode="lines", name="SMA20",
-            line=dict(color=TEXT, width=1)))
-        fig.add_trace(go.Scatter(
-            x=view.index, y=sma50.iloc[-63:], mode="lines", name="SMA50",
-            line=dict(color=MUTED, width=1, dash="dot")))
-        fig.update_layout(
-            height=300, margin=dict(l=8, r=8, t=8, b=8),
-            paper_bgcolor=INK, plot_bgcolor=INK, font=dict(color=MUTED, size=11),
-            xaxis=dict(rangeslider_visible=False, gridcolor=LINE),
-            yaxis=dict(gridcolor=LINE, side="right"),
-            showlegend=True, legend=dict(orientation="h", y=1.03, x=0,
-                                         font=dict(size=9),
-                                         bgcolor="rgba(0,0,0,0)"),
-        )
-        st.plotly_chart(fig, width="stretch",
-                        config={"displayModeBar": False})
+        fig = go.Figure(candles(view, accent))
+        for s, col, dash, lab in ((sma20, TEXT, None, "20"),
+                                  (sma50, MUTED, "dot", "50")):
+            sv = s.iloc[-63:]
+            fig.add_trace(go.Scatter(
+                x=view.index, y=sv, mode="lines",
+                line=dict(color=col, width=1, dash=dash), showlegend=False))
+            fig.add_annotation(x=view.index[-1], y=float(sv.iloc[-1]),
+                               text=lab, showarrow=False, xshift=14,
+                               font=dict(size=9, color=col))
+        chart_layout(fig, 300)
+        show_chart(fig)
     except Exception:
         pass  # a missing chart never blocks the page
 
@@ -333,14 +353,10 @@ def render_intraday(symbol: str, plan: dict, accent: str,
 
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
                             row_heights=[0.76, 0.24], vertical_spacing=0.04)
-        fig.add_trace(go.Candlestick(
-            x=bars.index, open=o, high=h, low=l, close=c, showlegend=False,
-            increasing_line_color=accent, decreasing_line_color="#55606c",
-            increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
-        ), row=1, col=1)
+        fig.add_trace(candles(bars, accent), row=1, col=1)
         fig.add_trace(go.Scatter(
             x=vwap.index, y=vwap, mode="lines", name="VWAP", showlegend=False,
-            line=dict(color=BLUE, width=1.2),
+            line=dict(color=VWAP_C, width=1.2),
             hovertemplate="VWAP %{y:.2f}<extra></extra>"), row=1, col=1)
         fig.add_trace(go.Bar(
             x=bars.index, y=v, marker_color=vol_colors, marker_line_width=0,
@@ -356,16 +372,10 @@ def render_intraday(symbol: str, plan: dict, accent: str,
                           row=1, col=1, annotation_text=lab,
                           annotation_font_color=col, annotation_font_size=10)
 
-        fig.update_layout(
-            height=390, margin=dict(l=8, r=8, t=8, b=8), bargap=0.1,
-            paper_bgcolor=INK, plot_bgcolor=INK, font=dict(color=MUTED, size=11),
-            showlegend=False,
-        )
-        fig.update_xaxes(rangeslider_visible=False, gridcolor=LINE)
-        fig.update_yaxes(gridcolor=LINE, side="right", row=1, col=1)
-        fig.update_yaxes(gridcolor=LINE, side="right", showgrid=False, row=2, col=1)
-        st.plotly_chart(fig, width="stretch",
-                        config={"displayModeBar": False})
+        chart_layout(fig, 340)
+        fig.update_layout(bargap=0.1)
+        fig.update_yaxes(showgrid=False, row=2, col=1)
+        show_chart(fig)
     except Exception:
         pass
 
@@ -399,22 +409,29 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
             fig.add_vline(x=xline, line_color=MUTED, line_width=1, line_dash="dot",
                           annotation_text=lab, annotation_font_size=9,
                           annotation_font_color=MUTED)
+        # shaded profit / loss regions under the stock curve
+        fig.add_trace(go.Scatter(
+            x=xs, y=np.maximum(stock, 0), mode="lines", fill="tozeroy",
+            fillcolor="rgba(255,180,84,.10)", showlegend=False,
+            line=dict(width=0), hoverinfo="skip"))
+        fig.add_trace(go.Scatter(
+            x=xs, y=np.minimum(stock, 0), mode="lines", fill="tozeroy",
+            fillcolor="rgba(229,72,77,.10)", showlegend=False,
+            line=dict(width=0), hoverinfo="skip"))
         fig.add_trace(go.Scatter(x=xs, y=stock, mode="lines", name="Stock",
                                  line=dict(color=accent, width=2)))
         if has_opt:
             fig.add_trace(go.Scatter(x=xs, y=opt, mode="lines", name="Option",
-                                     line=dict(color=BLUE, width=2)))
-        fig.update_layout(
-            height=300, margin=dict(l=8, r=8, t=8, b=8),
-            paper_bgcolor=INK, plot_bgcolor=INK, font=dict(color=MUTED, size=11),
-            xaxis=dict(gridcolor=LINE, tickprefix="$"),
-            yaxis=dict(gridcolor=LINE, side="right", tickprefix="$"),
-            showlegend=True, legend=dict(orientation="h", y=1.03, x=0,
-                                         font=dict(size=9),
-                                         bgcolor="rgba(0,0,0,0)"),
-        )
-        st.plotly_chart(fig, width="stretch",
-                        config={"displayModeBar": False})
+                                     line=dict(color=VWAP_C, width=1.6,
+                                               dash="dash")))
+        chart_layout(fig, 300)
+        fig.update_layout(showlegend=True,
+                          legend=dict(orientation="h", y=1.03, x=0,
+                                      font=dict(size=9),
+                                      bgcolor="rgba(0,0,0,0)"))
+        fig.update_xaxes(tickprefix="$")
+        fig.update_yaxes(tickprefix="$")
+        show_chart(fig)
 
         pts = [("STOP", stop), ("ENTRY", entry),
                ("+1 ATR", entry + atr), ("TARGET", target)]
