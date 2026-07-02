@@ -14,8 +14,8 @@ import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
 
-from engine import (DEFAULT_SETTINGS, bs_call_price, build_output,
-                    option_exit_value, pick_option, scan_market)
+from engine import (DEFAULT_SETTINGS, PHASE_LABEL, bs_call_price,
+                    build_output, option_exit_value, pick_option, scan_market)
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -373,6 +373,13 @@ def render_detail(symbol: str) -> None:
     chg_cls = "tk-chg-up" if day_pct >= 0 else "tk-chg-dn"
     rvol_txt = f'{r["rvol"]:.1f}×' if pd.notna(r["rvol"]) else "—"
 
+    failed = gates.get(symbol, [])
+    gate_html = (f'<div class="meta" style="color:{AMBER}">⚠ gates: '
+                 f'{", ".join(failed)}</div>' if failed else "")
+    if plan.get("scale_note"):
+        gate_html += (f'<div class="meta" style="color:{AMBER}">⚠ '
+                      f'{plan["scale_note"]}</div>')
+
     # Lazy: the chain is only fetched once a name is selected (cached 10 min).
     try:
         option = option_for(symbol, plan["entry"])
@@ -401,6 +408,7 @@ def render_detail(symbol: str) -> None:
   <div class="meta">{style} · score <b>{float(r["score"]):.2f}</b>
      · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
      · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}</div>
+  {gate_html}
   {opt_html}
 </div>
 """, unsafe_allow_html=True)
@@ -417,12 +425,23 @@ def render_detail(symbol: str) -> None:
 # Widgets render further down (Settings expander); values are read here from
 # session_state so the whole page derives from them on every rerun.
 
+def _sget(key: str, default):
+    return st.session_state.get(key, default)
+
+
 SETTINGS = {
     **DEFAULT_SETTINGS,
-    "risk_sizing": bool(st.session_state.get("set_risk_sizing",
-                                             DEFAULT_SETTINGS["risk_sizing"])),
-    "risk_budget": float(st.session_state.get("set_risk_budget",
-                                              DEFAULT_SETTINGS["risk_budget"])),
+    "risk_sizing": bool(_sget("set_risk_sizing",
+                              DEFAULT_SETTINGS["risk_sizing"])),
+    "risk_budget": float(_sget("set_risk_budget",
+                               DEFAULT_SETTINGS["risk_budget"])),
+    # Gate inputs are entered in human units (%, ×, R) and converted here.
+    "mom_gap_min": float(_sget("set_mom_gap", 1.5)) / 100.0,
+    "mom_rvol_min": float(_sget("set_mom_rvol", 1.5)),
+    "mom_rr_min": float(_sget("set_mom_rr", 1.5)),
+    "mr_rsi2_max": float(_sget("set_mr_rsi2", 10.0)),
+    "mr_ret3_max": float(_sget("set_mr_ret3", -3.0)) / 100.0,
+    "min_rr": float(_sget("set_min_rr", 1.2)),
 }
 
 # ----------------------------------------------------------------- header ---
@@ -455,31 +474,34 @@ if "error" in res:
 
 card, wl, diag = res["card"], res["watchlist"], res["diag"]
 plans = res.get("plans", {})
-card["name"] = name_for(card["symbol"])
+gates = res.get("gates", {})
 
 st.markdown(
-    f'<span class="db-pill">{card["phase_label"]}</span>&nbsp;'
-    f'<span class="db-pill">{card["asof"]}</span>',
+    f'<span class="db-pill">{PHASE_LABEL[res["phase"]]}</span>&nbsp;'
+    f'<span class="db-pill">{res["asof"]}</span>',
     unsafe_allow_html=True,
 )
 
 # ------------------------------------------------------------ trade ticket ---
 
-mom = card["style"] == "momentum"
-badge_cls = "badge-mom" if mom else "badge-mr"
-accent = AMBER if mom else BLUE
-chg_cls = "tk-chg-up" if card["day_pct"] >= 0 else "tk-chg-dn"
-p = card["plan"]
-rvol_txt = f'{card["rvol"]:.1f}×' if card["rvol"] is not None else "—"
-reasons = "".join(f"<li>{r}</li>" for r in card["reasons"])
+def render_champion(card: dict) -> None:
+    mom = card["style"] == "momentum"
+    badge_cls = "badge-mom" if mom else "badge-mr"
+    accent = AMBER if mom else BLUE
+    chg_cls = "tk-chg-up" if card["day_pct"] >= 0 else "tk-chg-dn"
+    p = card["plan"]
+    rvol_txt = f'{card["rvol"]:.1f}×' if card["rvol"] is not None else "—"
+    reasons = "".join(f"<li>{r}</li>" for r in card["reasons"])
+    scale_html = (f'<div class="meta" style="color:{AMBER}">⚠ '
+                  f'{p["scale_note"]}</div>' if p.get("scale_note") else "")
 
-try:
-    o = option_for(card["symbol"], p["entry"])
-except Exception:
-    o = None
-opt_html = option_block_html(card["symbol"], o, p, card["atr"])
+    try:
+        o = option_for(card["symbol"], p["entry"])
+    except Exception:
+        o = None
+    opt_html = option_block_html(card["symbol"], o, p, card["atr"])
 
-st.markdown(f"""
+    st.markdown(f"""
 <div class="ticket">
   <div class="ticket-rule"></div>
   <span class="badge {badge_cls}">{card["style"].upper()}</span>
@@ -500,6 +522,7 @@ st.markdown(f"""
      · flat by <b>{p["time_exit"]}</b></div>
   <div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt}
      · ATR {card["atr_pct"]:.1%}</div>
+  {scale_html}
   <div class="why"><div class="lab">WHY THIS TRADE</div>
     <ul>{reasons}</ul>
     <div class="meta" style="margin-top:8px">{p["entry_note"]}</div>
@@ -508,12 +531,37 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ------------------------------------------------------------------- chart ---
+    section("TODAY · 5-MIN")
+    render_intraday(card["symbol"], p, accent, card["prev_close"], card["live"])
+    section("PROJECTED SAME-DAY PAYOFF")
+    render_payoff(p, o, card["atr"], accent)
 
-section("TODAY · 5-MIN")
-render_intraday(card["symbol"], p, accent, card["prev_close"], card["live"])
-section("PROJECTED SAME-DAY PAYOFF")
-render_payoff(p, o, card["atr"], accent)
+
+def render_no_trade(style_cards: dict) -> None:
+    """Explicit skip — near misses listed with the gate each one failed."""
+    misses = [m for sc in style_cards.values()
+              for m in sc.get("near_misses", [])]
+    misses.sort(key=lambda m: -m["score"])
+    rows = "".join(
+        f'<li><b>{m["symbol"]}</b> ({m["style"]} · score {m["score"]:.2f}) '
+        f'— {", ".join(m["failed"])}</li>' for m in misses)
+    st.markdown(f"""
+<div class="ticket">
+  <div class="ticket-rule"></div>
+  <span class="badge" style="background:#1E2935;color:#8A97A5">NO TRADE</span>
+  <div class="tk-sym" style="font-size:2rem">No trade today</div>
+  <div class="tk-name">Nothing cleared the gates — skipping is a position.</div>
+  <div class="why"><div class="lab">NEAR MISSES · FAILED GATES</div>
+    <ul>{rows}</ul></div>
+</div>
+""", unsafe_allow_html=True)
+
+
+if card is not None:
+    card["name"] = name_for(card["symbol"])
+    render_champion(card)
+else:
+    render_no_trade(res["style_cards"])
 
 # --------------------------------------------------------------- watchlist ---
 
@@ -521,8 +569,10 @@ st.markdown("##### Ranked watchlist")
 rows = []
 for sym, r in wl.iterrows():
     dot = AMBER if r["style"] == "momentum" else BLUE
+    failed = gates.get(str(sym), [])
+    dim = ' style="opacity:.45"' if failed else ""
     rows.append(
-        f'<tr><td><span class="dot" style="background:{dot}"></span>{sym}</td>'
+        f'<tr{dim}><td><span class="dot" style="background:{dot}"></span>{sym}</td>'
         f'<td>{r["score"]:.2f}</td><td>${r["live"]:,.2f}</td>'
         f'<td>{r["day_pct"]:+.1%}</td>'
         f'<td>{(f"{r.rvol:.1f}×" if pd.notna(r.rvol) else "—")}</td>'
@@ -537,7 +587,8 @@ st.markdown(
 st.markdown(
     f'<div class="meta" style="margin-top:8px">'
     f'<span class="dot" style="background:{AMBER}"></span>momentum&nbsp;&nbsp;'
-    f'<span class="dot" style="background:{BLUE}"></span>mean-reversion</div>',
+    f'<span class="dot" style="background:{BLUE}"></span>mean-reversion'
+    f'&nbsp;&nbsp;· dimmed = failed a no-trade gate</div>',
     unsafe_allow_html=True,
 )
 
@@ -563,6 +614,20 @@ with st.expander("Settings"):
         "Risk budget per trade ($)", min_value=10.0, max_value=1000.0,
         value=DEFAULT_SETTINGS["risk_budget"], step=5.0, key="set_risk_budget",
     )
+    st.markdown('<div class="meta" style="margin:10px 0 0">NO-TRADE GATES'
+                '</div>', unsafe_allow_html=True)
+    st.number_input("Momentum: min gap (%)", min_value=0.0, max_value=10.0,
+                    value=1.5, step=0.1, key="set_mom_gap")
+    st.number_input("Momentum: min rvol (×)", min_value=0.0, max_value=10.0,
+                    value=1.5, step=0.1, key="set_mom_rvol")
+    st.number_input("Momentum: min R:R", min_value=0.5, max_value=5.0,
+                    value=1.5, step=0.1, key="set_mom_rr")
+    st.number_input("Mean-rev: max RSI2", min_value=1.0, max_value=50.0,
+                    value=10.0, step=1.0, key="set_mr_rsi2")
+    st.number_input("Mean-rev: max 3-day return (%)", min_value=-20.0,
+                    max_value=0.0, value=-3.0, step=0.5, key="set_mr_ret3")
+    st.number_input("Nomination floor R:R", min_value=0.5, max_value=3.0,
+                    value=1.2, step=0.1, key="set_min_rr")
 
 # ------------------------------------------------------------- diagnostics ---
 

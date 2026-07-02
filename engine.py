@@ -53,7 +53,17 @@ CONFIG = {
 DEFAULT_SETTINGS = {
     "risk_sizing": False,   # size stock by risk budget instead of full notional
     "risk_budget": 75.0,    # $ risked to the stop per trade when enabled
+    # No-trade gates — absolute floors; a style with no qualifier is a
+    # deliberate "no trade today", not a forced champion.
+    "mom_gap_min": 0.015,   # momentum: gap >= this OR rvol >= mom_rvol_min...
+    "mom_rvol_min": 1.5,
+    "mom_rr_min": 1.5,      # ...AND reward:risk >= this
+    "mr_rsi2_max": 10.0,    # mean-reversion: RSI2 <= this AND ret3 <= max
+    "mr_ret3_max": -0.03,
+    "min_rr": 1.2,          # nomination floor for any style
 }
+
+STYLES = ("momentum", "mean-reversion")
 
 # Used only if the S&P 500 constituent fetch fails.
 FALLBACK_UNIVERSE = [
@@ -380,17 +390,36 @@ def build_reasons(r: pd.Series) -> list[str]:
     return out
 
 
-def build_plan(r: pd.Series, settings: dict | None = None) -> dict:
+def _target_scale(phase: str | None, now: datetime | None) -> float:
+    """√(session remaining) — a full-ATR target is fantasy at 2pm.
+
+    Measured from 9:30 to the 15:45 time exit; 1.0 outside market hours
+    (the whole session is still ahead of a pre-market plan).
+    """
+    if phase != "open" or now is None:
+        return 1.0
+    opn = now.replace(hour=9, minute=30, second=0, microsecond=0)
+    ext = now.replace(hour=15, minute=45, second=0, microsecond=0)
+    total = (ext - opn).total_seconds()
+    if total <= 0:
+        return 1.0
+    frac = min(max((ext - now).total_seconds() / total, 0.0), 1.0)
+    return math.sqrt(frac)
+
+
+def build_plan(r: pd.Series, settings: dict | None = None,
+               phase: str | None = None, now: datetime | None = None) -> dict:
     s = {**DEFAULT_SETTINGS, **(settings or {})}
     ref = float(r["live"])
     atr = float(r["atr"])
+    scale = _target_scale(phase, now)
     if r["style"] == "momentum":
         stop = ref - CONFIG["momentum_stop_atr"] * atr
-        tgt = ref + CONFIG["momentum_tgt_atr"] * atr
+        tgt = ref + CONFIG["momentum_tgt_atr"] * atr * scale
         note = "Enter on strength — price holding above the opening range."
     else:
         stop = min(float(r["prev_low"]), ref - CONFIG["meanrev_stop_atr"] * atr)
-        tgt = ref + CONFIG["meanrev_tgt_atr"] * atr
+        tgt = ref + CONFIG["meanrev_tgt_atr"] * atr * scale
         note = "Enter the flush — scale in near the reference, not chasing green."
     ref, stop, tgt = _round_px(ref), _round_px(stop), _round_px(tgt)
     max_shares = int(CONFIG["max_notional"] // ref) if ref > 0 else 0
@@ -406,8 +435,41 @@ def build_plan(r: pd.Series, settings: dict | None = None) -> dict:
         "shares": shares, "notional": round(shares * ref, 0),
         "risk_dollars": risk, "reward_risk": round(rr, 1),
         "risk_sized": bool(s["risk_sizing"]),
+        "tgt_scale": round(scale, 2),
+        "scale_note": (f"target scaled ×{scale:.2f} — late entry"
+                       if scale < 0.95 else None),
         "entry_note": note, "time_exit": CONFIG["time_exit"],
     }
+
+
+def evaluate_gates(r: pd.Series, plan: dict,
+                   settings: dict | None = None) -> list[str]:
+    """Absolute no-trade floors. Returns failed-gate labels; empty = qualifies.
+
+    Missing data fails its gate — unknown is never treated as qualifying.
+    """
+    s = {**DEFAULT_SETTINGS, **(settings or {})}
+    failed = []
+    rr = plan["reward_risk"]
+    rr_ok = pd.notna(rr)
+    if r["style"] == "momentum":
+        gap_ok = pd.notna(r["gap_pct"]) and r["gap_pct"] >= s["mom_gap_min"]
+        rvol_ok = pd.notna(r["rvol"]) and r["rvol"] >= s["mom_rvol_min"]
+        if not (gap_ok or rvol_ok):
+            failed.append(f"gap<{s['mom_gap_min']:.1%} & "
+                          f"rvol<{s['mom_rvol_min']:g}×")
+        if not (rr_ok and rr >= s["mom_rr_min"]):
+            failed.append(f"R:R<{s['mom_rr_min']:g}")
+    else:
+        if not (pd.notna(r["rsi2"]) and r["rsi2"] <= s["mr_rsi2_max"]):
+            failed.append(f"RSI2>{s['mr_rsi2_max']:g}")
+        if not (pd.notna(r["ret3"]) and r["ret3"] <= s["mr_ret3_max"]):
+            failed.append(f"3d ret>{s['mr_ret3_max']:.0%}")
+    # Nomination floor — skip if a stricter style R:R gate already failed.
+    if not any(g.startswith("R:R") for g in failed):
+        if not (rr_ok and rr >= s["min_rr"]):
+            failed.append(f"R:R<{s['min_rr']:g}")
+    return failed
 
 
 def pick_option(symbol: str, ref: float) -> dict | None:
@@ -519,13 +581,47 @@ def _make_card(r: pd.Series, plan: dict, phase: str, asof: str) -> dict:
 
 
 def build_output(scan: dict, settings: dict | None = None) -> dict:
-    """Cheap, pure half: plans, champion card, watchlist from a scan result."""
+    """Cheap, pure half: gates, plans, per-style champions, watchlist.
+
+    A style with no gate-qualifier yields an explicit no-trade record with
+    named near-misses; the overall card is None when neither style qualifies.
+    """
     if "error" in scan:
         return scan
     ranked, phase, asof = scan["ranked"], scan["phase"], scan["asof"]
+    now = now_et()
 
-    top = ranked.iloc[0]
-    card = _make_card(top, build_plan(top, settings), phase, asof)
+    plan_map: dict[str, dict] = {}
+    gate_map: dict[str, list[str]] = {}
+
+    def eval_row(sym: str, r: pd.Series) -> tuple[dict, list[str]]:
+        if sym not in plan_map:
+            plan_map[sym] = build_plan(r, settings, phase=phase, now=now)
+            gate_map[sym] = evaluate_gates(r, plan_map[sym], settings)
+        return plan_map[sym], gate_map[sym]
+
+    style_cards: dict[str, dict] = {}
+    champs = []
+    for style in STYLES:
+        sub = ranked[ranked["style"] == style]
+        champion = None
+        for sym, r in sub.iterrows():
+            plan, failed = eval_row(str(sym), r)
+            if not failed:
+                champion = _make_card(r, plan, phase, asof)
+                break
+        if champion is not None:
+            style_cards[style] = champion
+            champs.append(champion)
+        else:
+            misses = [{"symbol": str(sym), "score": round(float(r["score"]), 2),
+                       "style": style, "failed": gate_map[str(sym)]}
+                      for sym, r in sub.head(3).iterrows()]
+            style_cards[style] = {"no_trade": True, "style": style,
+                                  "near_misses": misses,
+                                  "phase": phase, "asof": asof}
+
+    card = max(champs, key=lambda c: c["score"]) if champs else None
 
     wl_cols = ["style", "score", "live", "prev_close", "day_pct", "gap_pct",
                "rvol", "atr_pct", "rsi2", "atr", "prev_low"]
@@ -534,11 +630,14 @@ def build_output(scan: dict, settings: dict | None = None) -> dict:
 
     # Every watchlist row gets the same ATR-based plan the champion gets, so the
     # detail view can show entry/stop/target for any symbol without a re-scan.
-    plans = {str(s): build_plan(ranked.loc[s], settings)
-             for s in watchlist.index}
+    for s in watchlist.index:
+        eval_row(str(s), ranked.loc[s])
+    plans = {str(s): plan_map[str(s)] for s in watchlist.index}
+    gates = {str(s): gate_map[str(s)] for s in watchlist.index}
 
-    return {"card": card, "watchlist": watchlist, "plans": plans,
-            "diag": scan["diag"]}
+    return {"card": card, "style_cards": style_cards,
+            "watchlist": watchlist, "plans": plans, "gates": gates,
+            "phase": phase, "asof": asof, "diag": scan["diag"]}
 
 
 def enrich_card(card: dict) -> dict:
@@ -559,7 +658,7 @@ def enrich_card(card: dict) -> dict:
 def run_scan(progress=None, settings: dict | None = None) -> dict:
     """scan + derive + enrich — the one-call composition for headless use."""
     out = build_output(scan_market(progress), settings)
-    if "error" not in out:
+    if "error" not in out and out["card"] is not None:
         if progress:
             progress(f"Building trade card for {out['card']['symbol']}…")
         out["card"] = enrich_card(out["card"])
@@ -569,6 +668,11 @@ def run_scan(progress=None, settings: dict | None = None) -> dict:
 if __name__ == "__main__":
     res = run_scan(progress=print)
     import json
-    print(json.dumps(res["card"], indent=2, default=str))
-    print(res["watchlist"].round(2).to_string())
-    print(res["diag"])
+    if "error" in res:
+        print(res)
+    else:
+        print(json.dumps(res["card"] or res["style_cards"], indent=2,
+                         default=str))
+        print(res["watchlist"].round(2).to_string())
+        print(res["gates"])
+        print(res["diag"])
