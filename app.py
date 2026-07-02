@@ -87,6 +87,13 @@ h1, h2, h3, p, span, div { color: #E8EEF4; }
 .notice { border:1px dashed #1E2935; border-radius:9px; padding:8px 12px;
   color:#8A97A5; font-size:.76rem; font-family:'IBM Plex Mono',monospace;
   margin:8px 0; }
+.newsline { font-size:.8rem; color:#C7D2DC; margin:6px 0 2px;
+  line-height:1.35; }
+.newsline a { color:#E8EEF4; text-decoration:none;
+  border-bottom:1px dotted #8A97A5; }
+.newsline .src { font-family:'IBM Plex Mono',monospace; font-size:.68rem;
+  color:#8A97A5; }
+.whyline { font-size:.8rem; color:#FFD9A0; margin:4px 0 2px; }
 .horizon { height:44px; margin:8px -16px 4px;
   background:radial-gradient(120% 130% at 50% 115%,
   rgba(255,180,84,.18), rgba(92,200,255,.06) 55%, transparent 78%); }
@@ -238,6 +245,34 @@ def cached_earnings(symbols: tuple[str, ...]) -> dict:
 def cached_tape() -> dict:
     try:
         return market_tape()
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def cached_news(symbol: str) -> list[dict]:
+    try:
+        return ds.news(symbol, limit=3, hours=48)
+    except Exception:
+        return []
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def todays_why() -> dict:
+    """symbol -> 'why it's moving' line from today's official journal
+    record (written by the morning workflow when a Claude key exists)."""
+    try:
+        from engine import now_et
+        rec_path = (Path(__file__).parent / "journal"
+                    / now_et().date().isoformat() / "official.json")
+        if not rec_path.exists():
+            return {}
+        rec = json.loads(rec_path.read_text(encoding="utf-8"))
+        out = {}
+        for sc in rec.get("style_cards", {}).values():
+            if sc.get("why_moving") and sc.get("symbol"):
+                out[sc["symbol"]] = sc["why_moving"]
+        return out
     except Exception:
         return {}
 
@@ -511,6 +546,30 @@ def notice(msg: str) -> None:
     st.markdown(f'<div class="notice">◌ {msg}</div>', unsafe_allow_html=True)
 
 
+def _ago(ts) -> str:
+    try:
+        mins = max(0, (pd.Timestamp.now(tz=ts.tzinfo) - pd.Timestamp(ts))
+                   .total_seconds() / 60)
+        if mins < 90:
+            return f"{mins:.0f}m ago"
+        if mins < 60 * 36:
+            return f"{mins / 60:.0f}h ago"
+        return f"{mins / 1440:.0f}d ago"
+    except Exception:
+        return ""
+
+
+def news_html(items: list[dict], limit: int | None = None) -> str:
+    """Tap-to-open headlines: source · time-ago · linked headline."""
+    out = ""
+    for it in items[:limit] if limit else items:
+        out += (f'<div class="newsline"><span class="src">'
+                f'{it["source"]} · {_ago(it["ts"])}</span><br>'
+                f'<a href="{it["url"]}" target="_blank" rel="noopener">'
+                f'{it["headline"]}</a></div>')
+    return out
+
+
 # ------------------------------------------------- component vocabulary ---
 # Every card on the page is assembled from these helpers — one visual
 # language for champion cards, detail tickets, option blocks, no-trade.
@@ -618,12 +677,17 @@ def render_detail(symbol: str) -> None:
         gate_html += (f'<div class="meta" style="color:{AMBER}">⚠ '
                       f'{plan["scale_note"]}</div>')
 
-    # Lazy: the chain is only fetched once a name is selected (cached 10 min).
+    # Lazy: chain and news are only fetched once a name is selected
+    # (both cached 10 min).
     try:
         option = option_for(symbol, plan["entry"])
     except Exception:
         option = None
     opt_html = option_block_html(symbol, option, plan, float(r["atr"]))
+    try:
+        d_news = news_html(cached_news(symbol))
+    except Exception:
+        d_news = ""
 
     st.markdown(
         '<div class="card"><div class="card-rule"></div>'
@@ -638,7 +702,7 @@ def render_detail(symbol: str) -> None:
         + f'· ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}'
         + f'{quote_stale_txt(r.get("quote_time"))}</div>'
         + f'<div class="meta">{plan["entry_note"]}</div>'
-        + gate_html + opt_html + '</div>',
+        + gate_html + d_news + opt_html + '</div>',
         unsafe_allow_html=True)
 
     section("3-MONTH DAILY · 20/50 SMA")
@@ -795,11 +859,20 @@ def render_champion(card: dict) -> None:
         o = None
     opt_html = option_block_html(card["symbol"], o, p, card["atr"])
 
+    try:
+        items = cached_news(card["symbol"])
+    except Exception:
+        items = []
+    why = todays_why().get(card["symbol"])
+    top_news = (f'<div class="whyline">⚡ {why}</div>' if why else "") \
+        + (news_html(items, 1) if items else "")
+
     st.markdown(
         '<div class="card"><div class="card-rule"></div>'
         + plan_chips(card["style"], p, card.get("earnings"), accent)
         + f'<div class="sym">{card["symbol"]}</div>'
         + f'<div class="sub">{card["name"]}</div>'
+        + top_news
         + f'<div class="px-line">${card["live"]:,.2f} '
         + f'<span class="{chg_cls}">{card["day_pct"]:+.1%} today</span></div>'
         + levels_html(p, accent, o, card["atr"])
@@ -813,6 +886,9 @@ def render_champion(card: dict) -> None:
         + f'<div class="meta" style="margin-top:8px">{p["entry_note"]}</div>'
         + f'</div>{opt_html}</div>',
         unsafe_allow_html=True)
+    if len(items) > 1:
+        with st.expander(f"More headlines ({len(items) - 1})"):
+            st.markdown(news_html(items[1:]), unsafe_allow_html=True)
     # Charts and payoff live in the detail flow — the champion is the
     # default detail selection, so they appear right below the watchlist.
 

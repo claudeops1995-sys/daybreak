@@ -27,6 +27,7 @@ from pathlib import Path
 import pandas as pd
 import yfinance as yf
 
+import data_sources as ds
 import engine
 
 SCHEMA_VERSION = 1
@@ -108,10 +109,27 @@ def capture(stage: str, force: bool, prefix: str, outdir: Path) -> int:
         rec["diag"] = res.get("diag", {})
     else:
         # Enrich BOTH style champions (run_scan only enriches the overall
-        # card) so the journal has each contract at the frozen moment.
+        # card) so the journal has each contract at the frozen moment,
+        # plus headlines and — when a Claude key exists — a one-line
+        # "why it's moving" summary (skipped silently otherwise).
         for style, sc in res["style_cards"].items():
-            if not sc.get("no_trade") and sc.get("option") is None:
+            if sc.get("no_trade"):
+                continue
+            if sc.get("option") is None:
                 engine.enrich_card(sc)
+            items = []
+            try:
+                items = ds.news(sc["symbol"], 3, 48)
+                sc["news"] = [{**it, "ts": it["ts"].isoformat()}
+                              for it in items]
+            except Exception:
+                sc["news"] = []
+            try:
+                why = ds.claude_why(sc["symbol"], sc.get("gap_pct"), items)
+                if why:
+                    sc["why_moving"] = why
+            except Exception:
+                pass
         try:
             rec["tape"] = engine.market_tape()
         except Exception:
