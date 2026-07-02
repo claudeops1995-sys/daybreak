@@ -21,7 +21,7 @@ from __future__ import annotations
 import io
 import math
 import time
-from datetime import date, datetime, time as dtime
+from datetime import date, datetime, time as dtime, timedelta
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -60,6 +60,7 @@ DEFAULT_SETTINGS = {
     "mr_rsi2_max": 10.0,    # mean-reversion: RSI2 <= this AND ret3 <= max
     "mr_ret3_max": -0.03,
     "min_rr": 1.2,          # nomination floor for any style
+    "earnings_guard": True,  # exclude names reporting <=1 trading day
 }
 
 STYLES = ("momentum", "mean-reversion")
@@ -239,6 +240,67 @@ def option_exit_value(option: dict, S: float,
     iv = option.get("iv") or fallback_iv or 0.5
     T = max(int(option.get("dte", 0)) - 1, 0) / 365.0  # ~1 day of theta
     return n * 100.0 * bs_call_price(S, K, T, float(iv))
+
+
+# ---------------------------------------------------------------- earnings ---
+
+def next_trading_day(d: date) -> date:
+    nd = d + timedelta(days=1)
+    while nd.weekday() >= 5:
+        nd += timedelta(days=1)
+    return nd
+
+
+def earnings_guard(symbols: list[str]) -> dict[str, dict]:
+    """{sym: {"status": imminent|clear|unknown, "date": iso|None}}.
+
+    imminent = reports today or the next trading day. A failed/empty
+    calendar is "unknown" — unknown is never treated as safe; callers pair
+    it with the gap>8% check-headlines fallback.
+    """
+    today = now_et().date()
+    nxt = next_trading_day(today)
+    out: dict[str, dict] = {}
+    for sym in symbols:
+        status, edate = "unknown", None
+        try:
+            cal = yf.Ticker(sym).calendar
+            raw = []
+            if isinstance(cal, dict):
+                raw = cal.get("Earnings Date") or []
+            elif cal is not None and hasattr(cal, "loc"):  # legacy frame
+                try:
+                    raw = list(cal.loc["Earnings Date"])
+                except Exception:
+                    raw = []
+            dates = []
+            for x in list(raw)[:4]:
+                if isinstance(x, datetime):
+                    x = x.date()
+                if isinstance(x, date):
+                    dates.append(x)
+            if dates:
+                hits = [d for d in dates if today <= d <= nxt]
+                status = "imminent" if hits else "clear"
+                edate = min(hits) if hits else min(
+                    (d for d in dates if d >= today), default=None)
+        except Exception:
+            pass  # stays "unknown"
+        out[sym] = {"status": status,
+                    "date": edate.isoformat() if edate else None}
+    return out
+
+
+def earnings_candidates(scan: dict, per_style: int = 6) -> list[str]:
+    """Names worth an earnings check: top of each style (champion depth)."""
+    if "error" in scan:
+        return []
+    ranked = scan["ranked"]
+    syms: list[str] = []
+    for style in STYLES:
+        syms += [str(s) for s in
+                 ranked[ranked["style"] == style].head(per_style).index]
+    return syms
 
 
 # ----------------------------------------------------------------- stage 1 ---
@@ -614,24 +676,43 @@ def _make_card(r: pd.Series, plan: dict, phase: str, asof: str) -> dict:
     }
 
 
-def build_output(scan: dict, settings: dict | None = None) -> dict:
+def build_output(scan: dict, settings: dict | None = None,
+                 earnings: dict | None = None) -> dict:
     """Cheap, pure half: gates, plans, per-style champions, watchlist.
 
     A style with no gate-qualifier yields an explicit no-trade record with
     named near-misses; the overall card is None when neither style qualifies.
+    Earnings exclusions are injected as failed gates so near-misses,
+    dimming, and detail views all explain them the same way.
     """
     if "error" in scan:
         return scan
     ranked, phase, asof = scan["ranked"], scan["phase"], scan["asof"]
     now = now_et()
+    s = {**DEFAULT_SETTINGS, **(settings or {})}
+    earnings = earnings or {}
 
     plan_map: dict[str, dict] = {}
     gate_map: dict[str, list[str]] = {}
 
+    def earn_gates(sym: str, r: pd.Series) -> list[str]:
+        if not s["earnings_guard"]:
+            return []
+        e = earnings.get(sym)
+        if not e:
+            return []  # not checked — best-effort guard, no verdict
+        gp = r["gap_pct"]
+        if e["status"] == "imminent":
+            return ["earnings ≤1d"]
+        if e["status"] == "unknown" and pd.notna(gp) and gp > 0.08:
+            return ["gap>8% — check headlines (earnings unknown)"]
+        return []
+
     def eval_row(sym: str, r: pd.Series) -> tuple[dict, list[str]]:
         if sym not in plan_map:
             plan_map[sym] = build_plan(r, settings, phase=phase, now=now)
-            gate_map[sym] = evaluate_gates(r, plan_map[sym], settings)
+            gate_map[sym] = (evaluate_gates(r, plan_map[sym], settings)
+                             + earn_gates(sym, r))
         return plan_map[sym], gate_map[sym]
 
     style_cards: dict[str, dict] = {}
@@ -643,6 +724,7 @@ def build_output(scan: dict, settings: dict | None = None) -> dict:
             plan, failed = eval_row(str(sym), r)
             if not failed:
                 champion = _make_card(r, plan, phase, asof)
+                champion["earnings"] = earnings.get(str(sym))
                 break
         if champion is not None:
             style_cards[style] = champion
@@ -671,13 +753,15 @@ def build_output(scan: dict, settings: dict | None = None) -> dict:
 
     # Every watchlist row gets the same ATR-based plan the champion gets, so the
     # detail view can show entry/stop/target for any symbol without a re-scan.
-    for s in watchlist.index:
-        eval_row(str(s), ranked.loc[s])
-    plans = {str(s): plan_map[str(s)] for s in watchlist.index}
-    gates = {str(s): gate_map[str(s)] for s in watchlist.index}
+    # NB: loop var must not shadow the settings dict `s` above.
+    for ws in watchlist.index:
+        eval_row(str(ws), ranked.loc[ws])
+    plans = {str(ws): plan_map[str(ws)] for ws in watchlist.index}
+    gates = {str(ws): gate_map[str(ws)] for ws in watchlist.index}
 
     return {"card": card, "style_cards": style_cards,
             "watchlist": watchlist, "plans": plans, "gates": gates,
+            "earnings": earnings,
             "phase": phase, "asof": asof, "diag": scan["diag"]}
 
 
@@ -698,7 +782,16 @@ def enrich_card(card: dict) -> dict:
 
 def run_scan(progress=None, settings: dict | None = None) -> dict:
     """scan + derive + enrich — the one-call composition for headless use."""
-    out = build_output(scan_market(progress), settings)
+    scan = scan_market(progress)
+    earnings = {}
+    if "error" not in scan:
+        if progress:
+            progress("Checking earnings calendars…")
+        try:
+            earnings = earnings_guard(earnings_candidates(scan))
+        except Exception:
+            earnings = {}
+    out = build_output(scan, settings, earnings)
     if "error" not in out and out["card"] is not None:
         if progress:
             progress(f"Building trade card for {out['card']['symbol']}…")

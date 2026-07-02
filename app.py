@@ -17,7 +17,8 @@ import yfinance as yf
 from plotly.subplots import make_subplots
 
 from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_price,
-                    build_output, option_exit_value, pick_option, scan_market)
+                    build_output, earnings_candidates, earnings_guard,
+                    option_exit_value, pick_option, scan_market)
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -150,6 +151,14 @@ def daily_history(symbol: str) -> pd.DataFrame:
 @st.cache_data(ttl=600, show_spinner=False)
 def option_for(symbol: str, ref: float) -> dict | None:
     return pick_option(symbol, ref)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def cached_earnings(symbols: tuple[str, ...]) -> dict:
+    try:
+        return earnings_guard(list(symbols))
+    except Exception:
+        return {}
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -467,6 +476,8 @@ SETTINGS = {
     "mr_rsi2_max": float(_sget("set_mr_rsi2", 10.0)),
     "mr_ret3_max": float(_sget("set_mr_ret3", -3.0)) / 100.0,
     "min_rr": float(_sget("set_min_rr", 1.2)),
+    "earnings_guard": bool(_sget("set_earn_guard",
+                                 DEFAULT_SETTINGS["earnings_guard"])),
 }
 
 # ----------------------------------------------------------------- header ---
@@ -491,7 +502,11 @@ with st.spinner("Scanning the S&P 500 — first load takes about a minute…"):
         # never to a raw Streamlit exception page.
         res = {"error": "Scan failed — data source unreachable or rate-limited."}
 
-res = build_output(res, SETTINGS)  # cheap derivation — reruns are instant
+try:
+    earn = cached_earnings(tuple(earnings_candidates(res)))
+except Exception:
+    earn = {}
+res = build_output(res, SETTINGS, earn)  # cheap derivation — reruns instant
 
 if "error" in res:
     st.error(res["error"] + " Tap Rescan to try again.")
@@ -500,6 +515,7 @@ if "error" in res:
 card, wl, diag = res["card"], res["watchlist"], res["diag"]
 plans = res.get("plans", {})
 gates = res.get("gates", {})
+earn_map = res.get("earnings", {})
 
 st.markdown(
     f'<span class="db-pill">{PHASE_LABEL[res["phase"]]}</span>&nbsp;'
@@ -519,6 +535,11 @@ def render_champion(card: dict) -> None:
     reasons = "".join(f"<li>{r}</li>" for r in card["reasons"])
     scale_html = (f'<div class="meta" style="color:{AMBER}">⚠ '
                   f'{p["scale_note"]}</div>' if p.get("scale_note") else "")
+    e = card.get("earnings") or {}
+    earn_badge = ""
+    if e.get("status") == "imminent":  # only reachable with the guard off
+        earn_badge = (' <span class="badge" style="background:#E5484D;'
+                      f'color:#0B0F14">EARNINGS {e.get("date") or ""}</span>')
 
     try:
         o = option_for(card["symbol"], p["entry"])
@@ -529,7 +550,7 @@ def render_champion(card: dict) -> None:
     st.markdown(f"""
 <div class="ticket">
   <div class="ticket-rule"></div>
-  <span class="badge {badge_cls}">{card["style"].upper()}</span>
+  <span class="badge {badge_cls}">{card["style"].upper()}</span>{earn_badge}
   <div class="tk-sym">{card["symbol"]}</div>
   <div class="tk-name">{card["name"]}</div>
   <div class="tk-px">${card["live"]:,.2f}
@@ -603,8 +624,12 @@ for sym, r in wl.iterrows():
     dot = AMBER if r["style"] == "momentum" else BLUE
     failed = gates.get(str(sym), [])
     dim = ' style="opacity:.45"' if failed else ""
+    e_mark = ("<sup style=\"color:#E5484D\">E</sup>"
+              if (earn_map.get(str(sym)) or {}).get("status") == "imminent"
+              else "")
     rows.append(
-        f'<tr{dim}><td><span class="dot" style="background:{dot}"></span>{sym}</td>'
+        f'<tr{dim}><td><span class="dot" style="background:{dot}"></span>'
+        f'{sym}{e_mark}</td>'
         f'<td>{r["score"]:.2f}</td><td>${r["live"]:,.2f}</td>'
         f'<td>{r["day_pct"]:+.1%}</td>'
         f'<td>{(f"{r.rvol:.1f}×" if pd.notna(r.rvol) else "—")}</td>'
@@ -620,7 +645,8 @@ st.markdown(
     f'<div class="meta" style="margin-top:8px">'
     f'<span class="dot" style="background:{AMBER}"></span>momentum&nbsp;&nbsp;'
     f'<span class="dot" style="background:{BLUE}"></span>mean-reversion'
-    f'&nbsp;&nbsp;· dimmed = failed a no-trade gate</div>',
+    f'&nbsp;&nbsp;· dimmed = failed a gate'
+    f'&nbsp;&nbsp;· <sup style="color:#E5484D">E</sup> = earnings ≤1 day</div>',
     unsafe_allow_html=True,
 )
 
@@ -717,6 +743,11 @@ with st.expander("Settings"):
     st.number_input(
         "Risk budget per trade ($)", min_value=10.0, max_value=1000.0,
         value=DEFAULT_SETTINGS["risk_budget"], step=5.0, key="set_risk_budget",
+    )
+    st.checkbox(
+        "Earnings guard — exclude names reporting within 1 trading day "
+        "from champion slots (unknown calendar + gap>8% also excluded)",
+        value=DEFAULT_SETTINGS["earnings_guard"], key="set_earn_guard",
     )
     st.markdown('<div class="meta" style="margin:10px 0 0">NO-TRADE GATES'
                 '</div>', unsafe_allow_html=True)
