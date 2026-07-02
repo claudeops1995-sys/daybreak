@@ -151,6 +151,10 @@ def capture(stage: str, force: bool, prefix: str, outdir: Path) -> int:
             rec["tape"] = engine.market_tape()
         except Exception:
             rec["tape"] = {}
+        try:
+            rec["sources"] = ds.capabilities()
+        except Exception:
+            pass
         rec.update({
             "phase": res["phase"],
             "asof": res["asof"],
@@ -681,6 +685,10 @@ def main() -> int:
     ap.add_argument("--outdir", default=str(Path(__file__).parent / "journal"))
     args = ap.parse_args()
 
+    try:  # ops visibility: which data sources this run actually has
+        log(f"sources: {ds.capabilities(probe=True)}")
+    except Exception:
+        pass
     outdir = Path(args.outdir)
     if args.command == "capture":
         return capture(args.stage, args.force, args.prefix, outdir)

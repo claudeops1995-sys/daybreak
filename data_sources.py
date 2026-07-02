@@ -76,6 +76,25 @@ def polygon_enabled() -> bool:
     return False
 
 
+def capabilities(probe: bool = False) -> dict:
+    """Which sources are configured; with probe=True, actually test the
+    Alpaca keys with one latest-trade call (keys can exist yet be wrong)."""
+    caps = {
+        "alpaca": bool(alpaca_keys()),
+        "finnhub": bool(finnhub_key()),
+        "ntfy": bool(ntfy_topic()),
+        "anthropic": bool(anthropic_key()),
+        "polygon": "wired-inactive" if polygon_key() else False,
+    }
+    if probe and caps["alpaca"]:
+        try:
+            caps["alpaca"] = ("ok" if latest_prices(["SPY"]).get("SPY")
+                              else "keys-set-but-failing")
+        except Exception:
+            caps["alpaca"] = "keys-set-but-failing"
+    return caps
+
+
 # ------------------------------------------------------------------- http ---
 
 def _get(url: str, *, headers: dict | None = None, params: dict | None = None,

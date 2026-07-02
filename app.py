@@ -1390,6 +1390,17 @@ with tab_settings:
                     value=1.2, step=0.1, key="set_min_rr")
 
     with st.expander("Scan diagnostics"):
+        try:
+            caps = ds.capabilities()
+            src_line = " · ".join(
+                f"{k} {'✓' if v else '—'}" if not isinstance(v, str)
+                else f"{k} {v}" for k, v in caps.items())
+        except Exception:
+            src_line = "unavailable"
+        st.markdown(f'<div class="meta">data sources here: {src_line}'
+                    '<br>(GitHub workflow keys are separate — check a '
+                    'workflow run log for its sources line)</div>',
+                    unsafe_allow_html=True)
         q = diag["quarantined"]
         st.markdown(
             f"- Universe: **{diag['universe']}** ({diag['source']})\n"
