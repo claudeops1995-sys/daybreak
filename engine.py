@@ -44,8 +44,6 @@ CONFIG = {
     "watchlist_per_style": 3,   # guaranteed slots per style in the watchlist
     "momentum_stop_atr": 0.50,  # intraday stop as fraction of daily ATR
     "momentum_tgt_atr": 1.00,
-    "meanrev_stop_atr": 0.60,
-    "meanrev_tgt_atr": 0.80,
 }
 
 # Operator-adjustable settings (Settings UI overrides these per session).
@@ -61,8 +59,14 @@ DEFAULT_SETTINGS = {
     "mom_rr_min": 1.5,      # ...AND reward:risk >= this
     "mr_rsi2_max": 10.0,    # mean-reversion: RSI2 <= this AND ret3 <= max
     "mr_ret3_max": -0.03,
-    "min_rr": 1.2,          # nomination floor for any style
+    "min_rr": 1.2,          # nomination floor (styles with a price target)
     "earnings_guard": True,  # exclude names reporting <=1 trading day
+    # Mean-reversion SWING parameters (5y evidence in CLAUDE.md): wide
+    # stop, no price target — the recovery is the target.
+    "mr_stop_atr": 2.0,     # stop = entry − this × daily ATR (no prev-low pin)
+    "mr_exit_rsi": 65.0,    # sell at close of first day RSI(2) ends above
+    "mr_max_days": 10,      # hard cap: still open after N trading days
+    "mr_max_open": 5,       # concurrent open MR positions
 }
 
 STYLES = ("momentum", "mean-reversion")
@@ -739,15 +743,25 @@ def build_plan(r: pd.Series, settings: dict | None = None,
     atr = float(r["atr"])
     scale = _target_scale(phase, now)
     if r["style"] == "momentum":
+        # Day trade — unchanged: same-day, out by 15:45.
         entry, status, entry_kind, note = _momentum_anchor(r, ref, phase)
         stop = entry - CONFIG["momentum_stop_atr"] * atr
         tgt = entry + CONFIG["momentum_tgt_atr"] * atr * scale
+        kind, exit_rule = "day", None
+        time_exit = time_exit_label((now or now_et()).date())
     else:
+        # SWING: wide 2-ATR stop, NO price target — sell at the close of
+        # the first day daily RSI(2) ends above the threshold; hard cap
+        # after mr_max_days trading days. No pin to the prior day's low.
         entry, status, entry_kind, note = _meanrev_anchor(r, ref, atr, phase)
-        stop = min(float(r["prev_low"]),
-                   entry - CONFIG["meanrev_stop_atr"] * atr)
-        tgt = entry + CONFIG["meanrev_tgt_atr"] * atr * scale
-    ref, stop, tgt = _round_px(entry), _round_px(stop), _round_px(tgt)
+        stop = entry - float(s["mr_stop_atr"]) * atr
+        tgt = None
+        kind = "swing"
+        exit_rule = f"RSI2>{int(s['mr_exit_rsi'])}"
+        time_exit = f"swing · ≤{int(s['mr_max_days'])}d"
+        scale = 1.0  # no target to scale
+    ref, stop = _round_px(entry), _round_px(stop)
+    tgt = _round_px(tgt) if tgt is not None else None
     max_shares = int(CONFIG["max_notional"] // ref) if ref > 0 else 0
     if s["risk_sizing"] and ref > stop:
         # Fixed-fractional: risk budget / stop distance, still notional-capped.
@@ -755,18 +769,22 @@ def build_plan(r: pd.Series, settings: dict | None = None,
     else:
         shares = max_shares
     risk = round(shares * (ref - stop), 0)
-    rr = (tgt - ref) / (ref - stop) if ref > stop else float("nan")
+    rr = ((tgt - ref) / (ref - stop)
+          if tgt is not None and ref > stop else None)
     return {
         "entry": ref, "stop": stop, "target": tgt,
         "shares": shares, "notional": round(shares * ref, 0),
-        "risk_dollars": risk, "reward_risk": round(rr, 1),
+        "risk_dollars": risk,
+        "reward_risk": round(rr, 1) if rr is not None else None,
         "risk_sized": bool(s["risk_sizing"]),
+        "kind": kind, "exit_rule": exit_rule,
+        "max_days": int(s["mr_max_days"]) if kind == "swing" else None,
         "tgt_scale": round(scale, 2),
         "scale_note": (f"target scaled ×{scale:.2f} — late entry"
                        if scale < 0.95 else None),
         "status": status, "entry_kind": entry_kind,
         "entry_note": note,
-        "time_exit": time_exit_label((now or now_et()).date()),
+        "time_exit": time_exit,
     }
 
 
@@ -778,8 +796,8 @@ def evaluate_gates(r: pd.Series, plan: dict,
     """
     s = {**DEFAULT_SETTINGS, **(settings or {})}
     failed = []
-    rr = plan["reward_risk"]
-    rr_ok = pd.notna(rr)
+    rr = plan.get("reward_risk")
+    rr_ok = rr is not None and pd.notna(rr)
     if r["style"] == "momentum":
         gap_ok = pd.notna(r["gap_pct"]) and r["gap_pct"] >= s["mom_gap_min"]
         rvol_ok = pd.notna(r["rvol"]) and r["rvol"] >= s["mom_rvol_min"]
@@ -789,12 +807,16 @@ def evaluate_gates(r: pd.Series, plan: dict,
         if not (rr_ok and rr >= s["mom_rr_min"]):
             failed.append(f"R:R<{s['mom_rr_min']:g}")
     else:
+        # Swing MR has no price target, so no R:R gates apply — the
+        # washout conditions are the whole gate.
         if not (pd.notna(r["rsi2"]) and r["rsi2"] <= s["mr_rsi2_max"]):
             failed.append(f"RSI2>{s['mr_rsi2_max']:g}")
         if not (pd.notna(r["ret3"]) and r["ret3"] <= s["mr_ret3_max"]):
             failed.append(f"3d ret>{s['mr_ret3_max']:.0%}")
-    # Nomination floor — skip if a stricter style R:R gate already failed.
-    if not any(g.startswith("R:R") for g in failed):
+    # Nomination floor — only for plans that HAVE a target, and skip if a
+    # stricter style R:R gate already failed.
+    if plan.get("target") is not None and \
+            not any(g.startswith("R:R") for g in failed):
         if not (rr_ok and rr >= s["min_rr"]):
             failed.append(f"R:R<{s['min_rr']:g}")
     return failed

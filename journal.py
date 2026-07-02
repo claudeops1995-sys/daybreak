@@ -278,6 +278,13 @@ def score(force: bool, prefix: str, outdir: Path) -> int:
         if sc.get("no_trade"):
             outcomes["styles"][style] = {"no_trade": True}
             continue
+        if sc.get("plan", {}).get("kind") == "swing" or \
+                style == "mean-reversion":
+            # Multi-day swing — graded by the open-position tracker, not
+            # the same-day simulator.
+            outcomes["styles"][style] = {
+                "swing": True, "note": "tracked in positions.json"}
+            continue
         try:
             outcomes["styles"][style] = _score_card(sc, d, ex_t)
         except Exception as e:  # one bad symbol must not sink the night

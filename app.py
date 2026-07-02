@@ -510,14 +510,16 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
                   accent: str) -> None:
     """Same-day P&L across -2 ATR..+2 ATR for the stock and the option."""
     try:
-        entry, stop, target = plan["entry"], plan["stop"], plan["target"]
+        entry, stop, target = plan["entry"], plan["stop"], plan.get("target")
         shares = plan["shares"]
         if not atr or atr <= 0 or shares <= 0:
             notice("payoff unavailable for this plan")
             return
         xs = np.linspace(entry - 2 * atr, entry + 2 * atr, 61)
-        # Long stock, truncated where the stop or target would close the trade.
-        stock = shares * (np.clip(xs, stop, target) - entry)
+        # Long stock, truncated where the stop (and target, if the plan
+        # has one — swing MR does not) would close the trade.
+        upper = target if target is not None else np.inf
+        stock = shares * (np.clip(xs, stop, upper) - entry)
 
         has_opt = bool(option and "strike" in option)
         if has_opt:
@@ -532,7 +534,10 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
 
         fig = go.Figure()
         fig.add_hline(y=0, line_color=LINE, line_width=1)
-        for xline, lab in ((stop, "stop"), (entry, "entry"), (target, "target")):
+        vlines = [(stop, "stop"), (entry, "entry")]
+        if target is not None:
+            vlines.append((target, "target"))
+        for xline, lab in vlines:
             fig.add_vline(x=xline, line_color=MUTED, line_width=1, line_dash="dot",
                           annotation_text=lab, annotation_font_size=9,
                           annotation_font_color=MUTED)
@@ -560,11 +565,12 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
         fig.update_yaxes(tickprefix="$")
         show_chart(fig)
 
-        pts = [("STOP", stop), ("ENTRY", entry),
-               ("+1 ATR", entry + atr), ("TARGET", target)]
+        pts = [("STOP", stop), ("ENTRY", entry), ("+1 ATR", entry + atr)]
+        pts.append(("TARGET", target) if target is not None
+                   else ("+2 ATR", entry + 2 * atr))
         body = ""
         for lab, s in pts:
-            s_pnl = shares * (min(max(s, stop), target) - entry)
+            s_pnl = shares * (min(max(s, stop), upper) - entry)
             if has_opt:
                 o_txt = f"{opt_val(s) - cost:+,.0f}"
             else:
@@ -660,29 +666,48 @@ def levels_html(p: dict, accent: str, option: dict | None = None,
             fb_iv = ((atr / p["entry"]) * math.sqrt(252)
                      if atr and p["entry"] else None)
             stop_ct = option_exit_value(option, p["stop"], fb_iv) / per_ct
-            tgt_ct = option_exit_value(option, p["target"], fb_iv) / per_ct
-            subs = {
-                "entry": f'<div class="ct">ct ${option["mid"]:.2f} mid</div>',
-                "stop": f'<div class="ct">ct ≈ ${stop_ct:.2f}</div>',
-                "target": f'<div class="ct">ct ≈ ${tgt_ct:.2f}</div>',
-            }
+            subs["entry"] = (f'<div class="ct">ct ${option["mid"]:.2f} '
+                             f'mid</div>')
+            subs["stop"] = f'<div class="ct">ct ≈ ${stop_ct:.2f}</div>'
+            if p.get("target") is not None:
+                tgt_ct = (option_exit_value(option, p["target"], fb_iv)
+                          / per_ct)
+                subs["target"] = f'<div class="ct">ct ≈ ${tgt_ct:.2f}</div>'
         except Exception:
             pass  # the grid must render even if the revaluation fails
+    if p.get("target") is not None:
+        third = (f'<div class="lvl"><div class="lab" title="price to take '
+                 f'profits">TARGET</div>'
+                 f'<div class="val" style="color:{accent}">'
+                 f'${p["target"]:,.2f}</div>{subs["target"]}</div>')
+    else:  # swing — the recovery is the target
+        rule = p.get("exit_rule") or "strong close"
+        third = (f'<div class="lvl"><div class="lab" title="sell at the '
+                 f'close of the first day it finishes strong">EXIT</div>'
+                 f'<div class="val" style="color:{accent};font-size:.9rem;'
+                 f'padding-top:3px">{rule}</div>'
+                 f'<div class="ct">first strong close</div></div>')
     return (f'<div class="lvls">'
-            f'<div class="lvl"><div class="lab">ENTRY</div>'
+            f'<div class="lvl"><div class="lab" title="price to get in">'
+            f'ENTRY</div>'
             f'<div class="val">${p["entry"]:,.2f}</div>{subs["entry"]}</div>'
-            f'<div class="lvl"><div class="lab">STOP</div>'
+            f'<div class="lvl"><div class="lab" title="safety exit if it '
+            f'keeps falling">STOP</div>'
             f'<div class="val val-stop">${p["stop"]:,.2f}</div>{subs["stop"]}'
-            f'</div>'
-            f'<div class="lvl"><div class="lab">TARGET</div>'
-            f'<div class="val" style="color:{accent}">${p["target"]:,.2f}'
-            f'</div>{subs["target"]}</div></div>')
+            f'</div>' + third + '</div>')
 
 
 def plan_meta_html(p: dict) -> str:
+    rr = p.get("reward_risk")
+    rr_txt = f' · {rr}R' if rr is not None else ""
+    if p.get("kind") == "swing":
+        tail = (f' · sell on first strong close, '
+                f'<b>{p.get("max_days", 10)} days max</b>')
+    else:
+        tail = f' · flat by <b>{p["time_exit"]}</b>'
     return (f'<div class="meta"><b>{p["shares"]} shares</b> ≈ '
-            f'${p["notional"]:,.0f} · risk ${p["risk_dollars"]:,.0f} at stop '
-            f'· {p["reward_risk"]}R · flat by <b>{p["time_exit"]}</b></div>')
+            f'${p["notional"]:,.0f} · risk ${p["risk_dollars"]:,.0f} at stop'
+            f'{rr_txt}{tail}</div>')
 
 
 def quote_stale_txt(qt) -> str:
@@ -784,6 +809,15 @@ SETTINGS = {
     "min_rr": float(_sget("set_min_rr", 1.2)),
     "earnings_guard": bool(_sget("set_earn_guard",
                                  DEFAULT_SETTINGS["earnings_guard"])),
+    # MR swing parameters
+    "mr_stop_atr": float(_sget("set_mr_stop_atr",
+                               DEFAULT_SETTINGS["mr_stop_atr"])),
+    "mr_exit_rsi": float(_sget("set_mr_exit_rsi",
+                               DEFAULT_SETTINGS["mr_exit_rsi"])),
+    "mr_max_days": int(_sget("set_mr_max_days",
+                             DEFAULT_SETTINGS["mr_max_days"])),
+    "mr_max_open": int(_sget("set_mr_max_open",
+                             DEFAULT_SETTINGS["mr_max_open"])),
 }
 
 # ----------------------------------------------------------------- header ---
@@ -870,10 +904,12 @@ with tab_today:
                           f'no trade</span>')
         else:
             _p = _sc.get("plan", {})
+            _rr = _p.get("reward_risk")
+            _tail = f"{_rr}R" if _rr is not None else "swing"
             glance.append(f'<span class="db-pill">'
                           f'<span class="dot" style="background:{dot}"></span>'
                           f'{_sc["symbol"]} · {_p.get("status", "—")} · '
-                          f'{_p.get("reward_risk", "—")}R</span>')
+                          f'{_tail}</span>')
     if glance:
         st.markdown('<div style="margin-top:6px">' + "&nbsp;".join(glance)
                     + "</div>", unsafe_allow_html=True)
@@ -1127,6 +1163,21 @@ with tab_settings:
         "from champion slots (unknown calendar + gap>8% also excluded)",
         value=DEFAULT_SETTINGS["earnings_guard"], key="set_earn_guard",
     )
+    st.markdown('<div class="meta" style="margin:10px 0 0">MEAN-REVERSION '
+                'SWING</div>', unsafe_allow_html=True)
+    st.number_input("Swing stop (× daily ATR below entry)", min_value=0.5,
+                    max_value=4.0, value=DEFAULT_SETTINGS["mr_stop_atr"],
+                    step=0.25, key="set_mr_stop_atr")
+    st.number_input("Swing exit: sell first close with RSI(2) above",
+                    min_value=50.0, max_value=90.0,
+                    value=DEFAULT_SETTINGS["mr_exit_rsi"], step=5.0,
+                    key="set_mr_exit_rsi")
+    st.number_input("Swing hard cap (trading days held)", min_value=3,
+                    max_value=30, value=DEFAULT_SETTINGS["mr_max_days"],
+                    step=1, key="set_mr_max_days")
+    st.number_input("Max concurrent open swing positions", min_value=1,
+                    max_value=20, value=DEFAULT_SETTINGS["mr_max_open"],
+                    step=1, key="set_mr_max_open")
     st.markdown('<div class="meta" style="margin:10px 0 0">NO-TRADE GATES'
                 '</div>', unsafe_allow_html=True)
     st.number_input("Momentum: min gap (%)", min_value=0.0, max_value=10.0,
