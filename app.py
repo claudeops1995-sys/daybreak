@@ -145,6 +145,15 @@ table.wl td:first-child { text-align:left; font-weight:600; }
 .stButton>button[kind="primary"],
 .stButton>button[kind="primary"]:hover {
   background:#0B0F14; border:1.5px solid #FFB454; color:#E8EEF4; }
+
+/* ---- micro-motion: one entrance, CSS-only, reduced-motion aware ------- */
+@keyframes db-rise { from { opacity:0; transform:translateY(6px); }
+  to { opacity:1; transform:none; } }
+.card, .notice { animation: db-rise .28s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .card, .notice { animation:none; }
+  .stButton>button { transition:none; }
+}
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
