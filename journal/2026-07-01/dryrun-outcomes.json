@@ -1,0 +1,74 @@
+{
+ "schema": 1,
+ "date": "2026-07-01",
+ "scored_at_et": "2026-07-01T23:47:06.029281-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "AXON",
+   "style": "momentum",
+   "plan": {
+    "entry": 595.02,
+    "stop": 579.2,
+    "target": 626.67,
+    "shares": 8,
+    "status": "stalking",
+    "entry_kind": "stop_over"
+   },
+   "model": {
+    "entry": 595.02,
+    "exit": 591.29,
+    "entry_kind": "stop_over",
+    "filled_at_et": "2026-07-01 10:05:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-07-01 15:45:00-04:00",
+    "realized_r": -0.24,
+    "mfe_r": 1.01,
+    "mae_r": 0.51,
+    "pnl_stock": -30.0
+   },
+   "fill_ref_price": 587.1,
+   "fill": {
+    "entry": 595.02,
+    "exit": 591.29,
+    "entry_kind": "stop_over",
+    "filled_at_et": "2026-07-01 10:05:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-07-01 15:45:00-04:00",
+    "realized_r": -0.24,
+    "mfe_r": 1.01,
+    "mae_r": 0.51,
+    "pnl_stock": -30.0
+   },
+   "slippage_r": 0.0,
+   "option": {
+    "contract": "AXON260702C00590000",
+    "cost": 1115.0,
+    "exit_value": 249.0,
+    "pnl": -866.0
+   }
+  },
+  "mean-reversion": {
+   "symbol": "QCOM",
+   "style": "mean-reversion",
+   "plan": {
+    "entry": 181.7,
+    "stop": 171.76,
+    "target": 194.94,
+    "shares": 27,
+    "status": "stalking",
+    "entry_kind": "limit"
+   },
+   "model": {
+    "no_fill": true,
+    "entry_kind": "limit",
+    "exit_reason": "no_fill"
+   },
+   "fill_ref_price": 185.11,
+   "fill": {
+    "no_fill": true,
+    "entry_kind": "limit",
+    "exit_reason": "no_fill"
+   }
+  }
+ }
+}
