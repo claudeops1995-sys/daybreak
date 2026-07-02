@@ -1,0 +1,28 @@
+{
+ "open": [
+  {
+   "symbol": "QCOM",
+   "style": "mean-reversion",
+   "entry": 188.72,
+   "stop": 173.62,
+   "shares": 26,
+   "notional": 4907.0,
+   "opened": "2026-06-29",
+   "exit_rsi": 65.0,
+   "max_days": 10,
+   "pending_exit": false,
+   "instruction": "HOLD",
+   "seeded_test": true,
+   "last_close": 181.92,
+   "pnl": -177.0,
+   "days_held": 3,
+   "rsi2": 6.6,
+   "note": "marked as of 2026-07-01"
+  }
+ ],
+ "closed": [],
+ "skipped": [],
+ "paper_mom": [],
+ "deployed": 4907.0,
+ "updated_at_et": "2026-07-02T00:32:28.541977-04:00"
+}
