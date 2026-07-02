@@ -242,6 +242,53 @@ def option_exit_value(option: dict, S: float,
     return n * 100.0 * bs_call_price(S, K, T, float(iv))
 
 
+# -------------------------------------------------------------------- tape ---
+
+def market_tape() -> dict:
+    """SPY/QQQ day-change + VIX level for regime context.
+
+    Live 1-minute print against the prior daily close, with the same
+    >25% mismatch guard the scanner uses. Any failure returns {} — the
+    tape strip is context, never a blocker.
+    """
+    out: dict = {}
+    try:
+        syms = ["SPY", "QQQ", "^VIX"]
+        daily = yf.download(syms, period="5d", interval="1d",
+                            group_by="ticker", auto_adjust=True,
+                            progress=False)
+        live = yf.download(syms, period="1d", interval="1m", prepost=True,
+                           group_by="ticker", auto_adjust=True,
+                           progress=False)
+        today = now_et().date()
+        for sym, key in (("SPY", "SPY"), ("QQQ", "QQQ"), ("^VIX", "VIX")):
+            try:
+                c = daily[sym]["Close"].dropna()
+                if c.empty:
+                    continue
+                last_daily = float(c.iloc[-1])
+                has_today = c.index[-1].date() == today
+                prev = (float(c.iloc[-2]) if has_today and len(c) >= 2
+                        else last_daily)
+                px = last_daily
+                try:
+                    lc = live[sym]["Close"].dropna()
+                    if len(lc):
+                        px = float(lc.iloc[-1])
+                except Exception:
+                    pass
+                if last_daily and abs(px / last_daily - 1) > 0.25:
+                    px = last_daily  # mismatch guard
+                out[key] = {"last": round(px, 2),
+                            "day_pct": round(px / prev - 1, 4) if prev
+                            else None}
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return out
+
+
 # ---------------------------------------------------------------- earnings ---
 
 def next_trading_day(d: date) -> date:

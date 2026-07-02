@@ -18,7 +18,7 @@ from plotly.subplots import make_subplots
 
 from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_price,
                     build_output, earnings_candidates, earnings_guard,
-                    option_exit_value, pick_option, scan_market)
+                    market_tape, option_exit_value, pick_option, scan_market)
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -157,6 +157,14 @@ def option_for(symbol: str, ref: float) -> dict | None:
 def cached_earnings(symbols: tuple[str, ...]) -> dict:
     try:
         return earnings_guard(list(symbols))
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def cached_tape() -> dict:
+    try:
+        return market_tape()
     except Exception:
         return {}
 
@@ -523,6 +531,26 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ------------------------------------------------------------- tape strip ---
+
+tape = cached_tape()
+risk_off = ((tape.get("SPY") or {}).get("day_pct") or 0) < -0.01
+if tape:
+    chips = []
+    for k in ("SPY", "QQQ", "VIX"):
+        t = tape.get(k)
+        if not t:
+            continue
+        if k == "VIX":
+            chips.append(f'<span class="db-pill">VIX {t["last"]:.1f}</span>')
+        elif t.get("day_pct") is not None:
+            c = AMBER if t["day_pct"] >= 0 else BLUE
+            chips.append(f'<span class="db-pill">{k} <span style="color:{c}">'
+                         f'{t["day_pct"]:+.1%}</span></span>')
+    if chips:
+        st.markdown('<div style="margin-top:6px">' + "&nbsp;".join(chips)
+                    + "</div>", unsafe_allow_html=True)
+
 # ------------------------------------------------------------ trade ticket ---
 
 def render_champion(card: dict) -> None:
@@ -540,6 +568,11 @@ def render_champion(card: dict) -> None:
     if e.get("status") == "imminent":  # only reachable with the guard off
         earn_badge = (' <span class="badge" style="background:#E5484D;'
                       f'color:#0B0F14">EARNINGS {e.get("date") or ""}</span>')
+    if mom and risk_off:
+        spy_pct = (tape.get("SPY") or {}).get("day_pct")
+        scale_html += (f'<div class="meta" style="color:{AMBER}">⚠ tape red '
+                       f'(SPY {spy_pct:+.1%}) — momentum longs are fighting '
+                       f'the market today.</div>')
 
     try:
         o = option_for(card["symbol"], p["entry"])
@@ -679,11 +712,18 @@ def render_journal() -> None:
     rows, stats = [], {}
     for rec in days:
         oc = (rec.get("outcomes") or {}).get("styles", {})
+        spy = ((rec.get("tape") or {}).get("SPY") or {}).get("day_pct")
+        if spy is None:
+            regime = "—"
+        else:
+            col = RED if spy < -0.01 else MUTED
+            regime = f'<span style="color:{col}">{spy:+.1%}</span>'
         for style, sc in rec.get("style_cards", {}).items():
             if sc.get("no_trade"):
                 rows.append(f'<tr style="opacity:.45"><td>{rec["date"]}</td>'
                             f'<td>{style[:4]}</td><td>no trade</td>'
-                            '<td>—</td><td>—</td><td>—</td><td>—</td></tr>')
+                            f'<td>—</td><td>—</td><td>—</td><td>—</td>'
+                            f'<td>{regime}</td></tr>')
                 continue
             o = oc.get(style, {})
             m, f = o.get("model", {}), o.get("fill", {})
@@ -701,11 +741,12 @@ def render_journal() -> None:
                 f'<td>{(f"{mr:+.2f}" if mr is not None else "—")}</td>'
                 f'<td>{(f"{fr:+.2f}" if fr is not None else "—")}</td>'
                 f'<td>{(f"{opt_pnl:+,.0f}" if opt_pnl is not None else "—")}'
-                '</td></tr>')
+                f'</td><td>{regime}</td></tr>')
 
     st.markdown(
         '<table class="wl"><tr><th>DATE</th><th>STYLE</th><th>SYMBOL</th>'
-        '<th>EXIT</th><th>MODEL R</th><th>FILL R</th><th>OPT P&amp;L</th></tr>'
+        '<th>EXIT</th><th>MODEL R</th><th>FILL R</th><th>OPT P&amp;L</th>'
+        '<th>SPY</th></tr>'
         + "".join(rows) + "</table>",
         unsafe_allow_html=True)
 

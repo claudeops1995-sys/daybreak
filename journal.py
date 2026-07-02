@@ -112,6 +112,10 @@ def capture(stage: str, force: bool, prefix: str, outdir: Path) -> int:
         for style, sc in res["style_cards"].items():
             if not sc.get("no_trade") and sc.get("option") is None:
                 engine.enrich_card(sc)
+        try:
+            rec["tape"] = engine.market_tape()
+        except Exception:
+            rec["tape"] = {}
         rec.update({
             "phase": res["phase"],
             "asof": res["asof"],
