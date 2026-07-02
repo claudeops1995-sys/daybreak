@@ -17,14 +17,18 @@ Local Windows dev uses `.venv\Scripts\python.exe` (gitignored).
 ## Architecture
 
 - `engine.py` — pure data layer, no Streamlit imports. Split into
-  `scan_market()` (expensive, settings-independent, cached by the app) →
+  `fetch_features()` (stage 1: ~500-ticker daily history, the slow half)
+  → `scan_market(prefetched=…)` (stage 2: live quotes + ranking) →
   `build_output(scan, settings)` (cheap, pure: gates, plans, per-style
   champions) → `enrich_card()` (network extras for headless callers).
-  `run_scan()` composes all three for headless use. Never raises for
-  data-shaped reasons (empty frames degrade to the error dict).
-- `app.py` — all UI. `cached_scan()` caches `scan_market()`;
-  `build_output()` re-runs on every rerun so Settings changes are instant
-  and never re-trigger a scan. Call sites are try/except-guarded.
+  `run_scan()` composes everything for headless use. Never raises for
+  data-shaped reasons (empty frames degrade to the error dict); the two
+  bulk yf.download calls retry with exponential backoff (`_retry`).
+- `app.py` — all UI. Two cache layers: `cached_features()` (ttl 2700s)
+  under `cached_scan()` (ttl 600s) — rescans inside the stage-1 window
+  take seconds. `build_output()` re-runs on every rerun so Settings
+  changes are instant and never re-trigger a scan. Call sites are
+  try/except-guarded.
 - `journal.py` — headless capture/scorer run by GitHub Actions. No
   Streamlit imports (same rule as engine).
 

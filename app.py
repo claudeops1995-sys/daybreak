@@ -18,8 +18,8 @@ from plotly.subplots import make_subplots
 
 from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_greeks,
                     build_output, earnings_candidates, earnings_guard,
-                    market_tape, option_exit_value, pick_option, scan_market,
-                    session_frac)
+                    fetch_features, market_tape, option_exit_value,
+                    pick_option, scan_market, session_frac)
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -172,11 +172,20 @@ st.markdown(CSS, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------- data ---
 
+@st.cache_data(ttl=2700, show_spinner=False)
+def cached_features() -> dict:
+    # Stage 1: ~500-ticker daily history — the slow half. 45-minute cache;
+    # daily bars barely move intraday, and rescans inside the window skip
+    # straight to the 10-minute stage-2 refresh (seconds, not a minute).
+    return fetch_features()
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def cached_scan() -> dict:
-    # Expensive, settings-independent half only — build_output() derives
-    # plans/cards from this per rerun so Settings changes are instant.
-    return scan_market()
+    # Stage 2 on top of cached stage 1 — settings-independent;
+    # build_output() derives plans/cards per rerun so Settings changes
+    # are instant.
+    return scan_market(prefetched=cached_features())
 
 
 @st.cache_data(ttl=600, show_spinner=False)

@@ -154,6 +154,23 @@ PHASE_LABEL = {
 }
 
 
+# ----------------------------------------------------------------- retry ---
+
+def _retry(fn, attempts: int = 3, base_delay: float = 1.5):
+    """Polite retry with exponential backoff for Yahoo hiccups.
+
+    Only exceptions retry — an empty-but-successful response is a data
+    condition the callers already degrade on.
+    """
+    for i in range(attempts):
+        try:
+            return fn()
+        except Exception:
+            if i == attempts - 1:
+                raise
+            time.sleep(base_delay * (2 ** i))
+
+
 # -------------------------------------------------------------- universe ---
 
 def get_universe() -> tuple[list[str], str]:
@@ -400,7 +417,7 @@ def earnings_candidates(scan: dict, per_style: int = 6) -> list[str]:
 def build_features(universe: list[str], progress=None) -> pd.DataFrame:
     if progress:
         progress(f"Downloading daily history for {len(universe)} tickers…")
-    raw = yf.download(
+    raw = _retry(lambda: yf.download(
         universe,
         period=CONFIG["history_period"],
         interval="1d",
@@ -408,7 +425,7 @@ def build_features(universe: list[str], progress=None) -> pd.DataFrame:
         auto_adjust=True,
         threads=True,
         progress=False,
-    )
+    ))
     today = now_et().date()
     rows = []
     tickers = raw.columns.get_level_values(0).unique() if isinstance(
@@ -505,10 +522,10 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     syms = cands.index.tolist()
     if progress:
         progress(f"Pulling live quotes for {len(syms)} candidates…")
-    live = yf.download(
+    live = _retry(lambda: yf.download(
         syms, period="1d", interval="1m", prepost=True,
         group_by="ticker", auto_adjust=True, threads=True, progress=False,
-    )
+    ))
     out = cands.copy()
     out["live"] = np.nan
     out["quote_time"] = pd.NaT
@@ -818,35 +835,46 @@ def pick_option(symbol: str, ref: float) -> dict | None:
 
 # -------------------------------------------------------------------- run ---
 
-def scan_market(progress=None) -> dict:
-    """Expensive half: universe -> features -> live quotes -> ranked frame.
+def fetch_features(progress=None) -> dict:
+    """Stage 1 alone: universe + daily history + features — the slow half
+    (~500 tickers). The app caches this longer (45 min) than stage 2
+    (10 min), so rescans inside the window feel instant."""
+    universe, source = get_universe()
+    feat = build_features(universe, progress)
+    return {"features": feat, "universe_n": len(universe), "source": source}
+
+
+def scan_market(progress=None, prefetched: dict | None = None) -> dict:
+    """Expensive half: features (stage 1, optionally prefetched/cached) ->
+    live quotes -> ranked frame.
 
     Settings-independent, so the app can cache this and re-derive plans and
     cards cheaply when the operator flips a setting.
     """
     t0 = time.time()
     phase = market_phase()
-    universe, source = get_universe()
+    pf = prefetched or fetch_features(progress)
+    feat = pf["features"]
+    universe_n, source = pf["universe_n"], pf["source"]
 
-    feat = build_features(universe, progress)
     if feat.empty:
         return {"error": "No usable daily data came back from Yahoo.",
-                "diag": {"universe": len(universe), "filtered": 0}}
+                "diag": {"universe": universe_n, "filtered": 0}}
     quarantined = feat.index[feat["split_suspect"]].tolist()
     feat = feat[~feat["split_suspect"]]
     cands = shortlist(feat)
     if cands.empty:
         return {"error": "No candidates survived the filters.",
-                "diag": {"universe": len(universe), "filtered": len(feat)}}
+                "diag": {"universe": universe_n, "filtered": len(feat)}}
     snap = live_snapshot(cands, progress)
     ranked = score(snap)
     ranked = ranked[np.isfinite(ranked["score"])]
     if ranked.empty:
         return {"error": "No candidates survived the filters.", "diag": {
-            "universe": len(universe), "filtered": len(feat)}}
+            "universe": universe_n, "filtered": len(feat)}}
 
     diag = {
-        "universe": len(universe), "source": source,
+        "universe": universe_n, "source": source,
         "passed_filters": len(feat), "stage2": len(cands),
         "quarantined": quarantined,
         "phase": phase, "elapsed_s": round(time.time() - t0, 1),
