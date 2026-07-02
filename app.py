@@ -398,6 +398,19 @@ def section(label: str) -> None:
                 f'letter-spacing:.12em">{label}</div>', unsafe_allow_html=True)
 
 
+def quote_stale_txt(qt) -> str:
+    """' · quote 09:44 ET (2m old)' — red when the print is >15m stale."""
+    try:
+        if qt is None or pd.isna(qt):
+            return ""
+        age = max(0.0, (pd.Timestamp.now(tz=qt.tz) - qt).total_seconds() / 60)
+        col = RED if age > 15 else MUTED
+        return (f' · <span style="color:{col}">quote {qt:%H:%M} ET '
+                f'({age:.0f}m old)</span>')
+    except Exception:
+        return ""
+
+
 def render_detail(symbol: str) -> None:
     """Full drill-down panel for any watchlist symbol."""
     # A rescan can change the watchlist while detail_sym still holds the old
@@ -449,7 +462,8 @@ def render_detail(symbol: str) -> None:
      · flat by <b>{plan["time_exit"]}</b></div>
   <div class="meta">{style} · score <b>{float(r["score"]):.2f}</b>
      · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
-     · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}</div>
+     · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}
+     {quote_stale_txt(r.get("quote_time"))}</div>
   {gate_html}
   {opt_html}
 </div>
@@ -600,7 +614,7 @@ def render_champion(card: dict) -> None:
      · risk ${p["risk_dollars"]:,.0f} at stop · {p["reward_risk"]}R
      · flat by <b>{p["time_exit"]}</b></div>
   <div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt}
-     · ATR {card["atr_pct"]:.1%}</div>
+     · ATR {card["atr_pct"]:.1%}{quote_stale_txt(card.get("quote_time"))}</div>
   {scale_html}
   <div class="why"><div class="lab">WHY THIS TRADE</div>
     <ul>{reasons}</ul>

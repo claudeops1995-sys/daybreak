@@ -399,7 +399,14 @@ def build_features(universe: list[str], progress=None) -> pd.DataFrame:
         sma50 = float(c.rolling(50).mean().iloc[-1])
         sma200 = float(c.rolling(200).mean().iloc[-1])
         std20 = float(c.rolling(20).std().iloc[-1])
-        atr = _atr_last(h, l, c)
+        high20 = float(h.rolling(20).max().iloc[-1])
+        close4 = float(c.iloc[-4]) if len(c) >= 4 else np.nan
+        # ATR from completed bars only — today's still-forming range would
+        # drag the average down early in the session.
+        if has_today:
+            atr = _atr_last(h.iloc[:-1], l.iloc[:-1], c.iloc[:-1])
+        else:
+            atr = _atr_last(h, l, c)
         rows.append({
             "symbol": t,
             "split_suspect": split_suspect,
@@ -414,9 +421,11 @@ def build_features(universe: list[str], progress=None) -> pd.DataFrame:
             "atr_pct": atr / price if price else np.nan,
             "rsi2": _rsi_last(c, 2),
             "rsi14": _rsi_last(c, 14),
-            "ret3": price / float(c.iloc[-4]) - 1 if len(c) >= 4 else np.nan,
+            "sma20": sma20, "std20": std20, "high20": high20,
+            "close4": close4,
+            "ret3": price / close4 - 1 if close4 and close4 > 0 else np.nan,
             "bb_z": (price - sma20) / std20 if std20 else np.nan,
-            "near_high": price / float(h.rolling(20).max().iloc[-1]),
+            "near_high": price / high20 if high20 else np.nan,
             "above20": price > sma20,
             "above200": price > sma200,
             "trend_up": sma20 > sma50,
@@ -470,12 +479,25 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     mismatch = (out["live"] / out["price"] - 1).abs() > 0.25
     out.loc[mismatch, "live"] = out.loc[mismatch, "price"]
 
+    # Stage-1 price-dependent features are stale by stage 2 (especially
+    # premarket) — recompute them against the live print.
+    out["ret3"] = np.where(out["close4"] > 0,
+                           out["live"] / out["close4"] - 1, np.nan)
+    out["bb_z"] = np.where(out["std20"] > 0,
+                           (out["live"] - out["sma20"]) / out["std20"],
+                           np.nan)
+    out["near_high"] = np.where(out["high20"] > 0,
+                                out["live"] / out["high20"], np.nan)
+
     phase = market_phase()
     ts = now_et()
     if phase == "open":
         elapsed = (ts - ts.replace(hour=9, minute=30, second=0)).seconds / 60
         sess = float(session_minutes(ts.date()))
-        frac = float(np.clip(elapsed / sess, 0.08, 1.0))
+        # Square-root pace curve: intraday volume is front-loaded, so the
+        # linear elapsed/session fraction understates expected volume early
+        # and flatters 9:35 rvol readings.
+        frac = float(np.clip(math.sqrt(elapsed / sess), 0.08, 1.0))
         out["rvol"] = out["today_vol"] / (out["avg_vol20"] * frac)
     else:
         out["rvol"] = out["today_vol"] / out["avg_vol20"]
@@ -712,6 +734,7 @@ def _make_card(r: pd.Series, plan: dict, phase: str, asof: str) -> dict:
         "symbol": str(r.name), "name": str(r.name), "style": str(r["style"]),
         "score": round(float(r["score"]), 2),
         "live": plan["entry"], "prev_close": float(r["prev_close"]),
+        "quote_time": r.get("quote_time"),
         "atr": float(r["atr"]),
         "day_pct": float(r["day_pct"]), "gap_pct": float(r["gap_pct"]),
         "rvol": float(r["rvol"]) if pd.notna(r["rvol"]) else None,
@@ -787,7 +810,7 @@ def build_output(scan: dict, settings: dict | None = None,
     card = max(champs, key=lambda c: c["score"]) if champs else None
 
     wl_cols = ["style", "score", "live", "prev_close", "day_pct", "gap_pct",
-               "rvol", "atr_pct", "rsi2", "atr", "prev_low"]
+               "rvol", "atr_pct", "rsi2", "atr", "prev_low", "quote_time"]
     # Guaranteed per-style slots — a hot momentum day can't crowd the
     # mean-reversion alternatives out of the list.
     wl_idx = []
