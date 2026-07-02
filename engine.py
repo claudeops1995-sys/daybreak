@@ -365,12 +365,20 @@ def next_trading_day(d: date) -> date:
 def earnings_guard(symbols: list[str]) -> dict[str, dict]:
     """{sym: {"status": imminent|clear|unknown, "date": iso|None}}.
 
-    imminent = reports today or the next trading day. A failed/empty
-    calendar is "unknown" — unknown is never treated as safe; callers pair
-    it with the gap>8% check-headlines fallback.
+    imminent = reports today or the next trading day. Finnhub's ranged
+    calendar is primary (one call; a successful response with no row IS
+    a genuine "clear"); the per-symbol yfinance loop is the fallback. A
+    failed/empty calendar is "unknown" — unknown is never treated as
+    safe; callers pair it with the gap>8% check-headlines fallback.
     """
     today = now_et().date()
     nxt = next_trading_day(today)
+    try:
+        fh = ds.finnhub_earnings(symbols, today, nxt)
+    except Exception:
+        fh = None
+    if fh is not None:
+        return fh
     out: dict[str, dict] = {}
     for sym in symbols:
         status, edate = "unknown", None
