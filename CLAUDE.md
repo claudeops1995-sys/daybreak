@@ -54,9 +54,14 @@ first, then `st.secrets`. Missing keys silently disable that source.
 
 - `journal/YYYY-MM-DD/prelim.json` (~9:35 ET), `official.json` (~9:45 ET,
   the frozen decision point outcomes are scored against), `outcomes.json`
-  (nightly ~20:30 ET: stop/target/time sequencing with stop-first on
-  ambiguous bars, MFE/MAE, realized R for both the 9:45 model entry and a
-  ~10:00 ET realistic fill, option P&L).
+  (nightly ~20:30 ET: momentum day trades — stop/target/time sequencing
+  with stop-first on ambiguous bars, MFE/MAE, model vs ~10:00 fill R,
+  option P&L; swing MR is graded by the position tracker instead).
+- `journal/positions.json` — the swing book: `open` (entry/stop/shares/
+  days_held/RSI2/instruction/pending_exit), `closed`, `skipped`
+  (capacity/no-fill), `paper_mom`, `deployed`. Nightly `positions` stage
+  updates it (gap-below-stop fills at the OPEN); morning `notify` stage
+  sends the ntfy alert, actions first. Capacity default 5 concurrent.
 - Workflows: `.github/workflows/journal-morning.yml` and
   `journal-nightly.yml`. Cron is UTC and jittery → both fire early across
   EDT/EST offsets and `journal.py` gates on the actual ET clock; runs are
@@ -141,11 +146,26 @@ numerals/labels. Spacing scale **4/8/12/16/24**; radii 14 (cards) / 9
 - Commit messages end with the Claude co-author trailer; push to `main`
   triggers the deploy.
 
+## Evidence notes (2026-07-02 — trust shapes, not absolutes)
+
+5-year sweep of the mean-reversion exit/stop grid, RSI2>65 exit:
+- **2.0 ATR stop → 67.2% win, +$41.6/trade, +$43,757 total, worst
+  single trade −$1,427, and still +$27.5/trade in 2022.** The old
+  0.6-ATR stop LOST money in 2022 — tight stops sell the flush bottom.
+- The RSI(2)>65 recovery exit beat the MA5 exit at ALL stop widths.
+- Absolute dollar figures are survivorship-inflated (today's S&P 500
+  constituents) — **trust the shapes, not the absolutes**: wide stop >
+  tight stop, RSI exit > MA exit, recovery-as-target > fixed target.
+- Momentum stays a same-day trade, out by 15:45. The flipped-positive
+  2–3 day momentum hold looked promising and is being **paper-graded
+  nightly** (`paper_mom` in positions.json) — graded, NOT traded.
+- Sentiment columns (Stocktwits bull %, WSB mentions/rank) are recorded
+  with every card from day one for FUTURE testing only — no evidence
+  yet, so they gate nothing.
+- No score-weight changes until the journal produces evidence.
+
 ## TODO (cosmetic — deferred from 2026-07-01 code review)
 
-- [ ] Champion ticket and detail ticket share ~80% of their HTML — extract a
-      common template helper.
-- [ ] `quote_time` is collected in `live_snapshot` but never displayed.
 - [ ] `rsi14` is computed in `build_features` but unused downstream.
 - [ ] `PANEL` color constant in `app.py` is unused (CSS hardcodes #121922).
 - [ ] `market_phase` treats US market holidays as normal weekdays.
