@@ -21,7 +21,7 @@ from __future__ import annotations
 import io
 import math
 import time
-from datetime import datetime
+from datetime import date, datetime, time as dtime
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -44,7 +44,6 @@ CONFIG = {
     "momentum_tgt_atr": 1.00,
     "meanrev_stop_atr": 0.60,
     "meanrev_tgt_atr": 0.80,
-    "time_exit": "15:45 ET",
 }
 
 # Operator-adjustable settings (Settings UI overrides these per session).
@@ -88,14 +87,45 @@ def now_et() -> datetime:
     return datetime.now(ET)
 
 
+# NYSE 1:00 pm ET early closes, verified through 2028 (no July half-day in
+# 2026/2027 — July 4 falls on a weekend, observed as a full holiday). Full
+# market holidays are still treated as weekdays — see CLAUDE.md TODO.
+HALF_DAYS = {
+    date(2025, 7, 3), date(2025, 11, 28), date(2025, 12, 24),
+    date(2026, 11, 27), date(2026, 12, 24),
+    date(2027, 11, 26),
+    date(2028, 7, 3), date(2028, 11, 24),
+}
+
+
+def session_close_time(d: date) -> dtime:
+    return dtime(13, 0) if d in HALF_DAYS else dtime(16, 0)
+
+
+def exit_time(d: date) -> dtime:
+    """Hard time-exit, 15 minutes before that day's close."""
+    return dtime(12, 45) if d in HALF_DAYS else dtime(15, 45)
+
+
+def time_exit_label(d: date) -> str:
+    t = exit_time(d)
+    return f"{t.hour}:{t.minute:02d} ET"
+
+
+def session_minutes(d: date) -> int:
+    return 210 if d in HALF_DAYS else 390
+
+
 def market_phase(ts: datetime | None = None) -> str:
     """One of: weekend, overnight, premarket, open, afterhours."""
     ts = ts or now_et()
     if ts.weekday() >= 5:
         return "weekend"
+    close_t = session_close_time(ts.date())
     pre = ts.replace(hour=4, minute=0, second=0, microsecond=0)
     opn = ts.replace(hour=9, minute=30, second=0, microsecond=0)
-    cls = ts.replace(hour=16, minute=0, second=0, microsecond=0)
+    cls = ts.replace(hour=close_t.hour, minute=close_t.minute,
+                     second=0, microsecond=0)
     post = ts.replace(hour=20, minute=0, second=0, microsecond=0)
     if ts < pre:
         return "overnight"
@@ -335,7 +365,8 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     ts = now_et()
     if phase == "open":
         elapsed = (ts - ts.replace(hour=9, minute=30, second=0)).seconds / 60
-        frac = float(np.clip(elapsed / 390.0, 0.08, 1.0))
+        sess = float(session_minutes(ts.date()))
+        frac = float(np.clip(elapsed / sess, 0.08, 1.0))
         out["rvol"] = out["today_vol"] / (out["avg_vol20"] * frac)
     else:
         out["rvol"] = out["today_vol"] / out["avg_vol20"]
@@ -393,13 +424,15 @@ def build_reasons(r: pd.Series) -> list[str]:
 def _target_scale(phase: str | None, now: datetime | None) -> float:
     """√(session remaining) — a full-ATR target is fantasy at 2pm.
 
-    Measured from 9:30 to the 15:45 time exit; 1.0 outside market hours
-    (the whole session is still ahead of a pre-market plan).
+    Measured from 9:30 to the day's time exit (15:45, or 12:45 on half
+    days); 1.0 outside market hours (the whole session is still ahead of
+    a pre-market plan).
     """
     if phase != "open" or now is None:
         return 1.0
+    ex = exit_time(now.date())
     opn = now.replace(hour=9, minute=30, second=0, microsecond=0)
-    ext = now.replace(hour=15, minute=45, second=0, microsecond=0)
+    ext = now.replace(hour=ex.hour, minute=ex.minute, second=0, microsecond=0)
     total = (ext - opn).total_seconds()
     if total <= 0:
         return 1.0
@@ -438,7 +471,8 @@ def build_plan(r: pd.Series, settings: dict | None = None,
         "tgt_scale": round(scale, 2),
         "scale_note": (f"target scaled ×{scale:.2f} — late entry"
                        if scale < 0.95 else None),
-        "entry_note": note, "time_exit": CONFIG["time_exit"],
+        "entry_note": note,
+        "time_exit": time_exit_label((now or now_et()).date()),
     }
 
 
