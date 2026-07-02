@@ -4,12 +4,16 @@ Run locally:   streamlit run app.py
 Deploy free:   share.streamlit.io  ->  point at this repo, main file app.py
 """
 
+import math
+
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 import yfinance as yf
+from plotly.subplots import make_subplots
 
-from engine import run_scan
+from engine import run_scan, pick_option, bs_call_price
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -121,6 +125,232 @@ def intraday(symbol: str) -> pd.DataFrame:
     return df[symbol].dropna()
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def daily_history(symbol: str) -> pd.DataFrame:
+    # 6 months so the 50-day SMA is fully warmed before we slice to ~3 months.
+    df = yf.download([symbol], period="6mo", interval="1d",
+                     group_by="ticker", auto_adjust=True, progress=False)
+    return df[symbol].dropna()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def option_for(symbol: str, ref: float) -> dict | None:
+    return pick_option(symbol, ref)
+
+
+# ---------------------------------------------------------------- charts ---
+
+def render_daily(symbol: str, accent: str) -> None:
+    """3-month daily candlestick with 20/50 SMAs."""
+    try:
+        df = daily_history(symbol)
+        if len(df) < 30:
+            return
+        c = df["Close"]
+        sma20, sma50 = c.rolling(20).mean(), c.rolling(50).mean()
+        view = df.iloc[-63:]
+        fig = go.Figure(go.Candlestick(
+            x=view.index, open=view["Open"], high=view["High"],
+            low=view["Low"], close=view["Close"], showlegend=False,
+            increasing_line_color=accent, decreasing_line_color="#55606c",
+            increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
+        ))
+        fig.add_trace(go.Scatter(
+            x=view.index, y=sma20.iloc[-63:], mode="lines", name="SMA20",
+            line=dict(color=TEXT, width=1)))
+        fig.add_trace(go.Scatter(
+            x=view.index, y=sma50.iloc[-63:], mode="lines", name="SMA50",
+            line=dict(color=MUTED, width=1, dash="dot")))
+        fig.update_layout(
+            height=300, margin=dict(l=8, r=8, t=8, b=8),
+            paper_bgcolor=INK, plot_bgcolor=INK, font=dict(color=MUTED, size=11),
+            xaxis=dict(rangeslider_visible=False, gridcolor=LINE),
+            yaxis=dict(gridcolor=LINE, side="right"),
+            showlegend=True, legend=dict(orientation="h", y=1.03, x=0,
+                                         font=dict(size=9),
+                                         bgcolor="rgba(0,0,0,0)"),
+        )
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False})
+    except Exception:
+        pass  # a missing chart never blocks the page
+
+
+def render_intraday(symbol: str, plan: dict, accent: str,
+                    prev_close: float, live: float) -> None:
+    """Today's 5-min chart: entry/stop/target, VWAP, prior close, volume bars."""
+    try:
+        bars = intraday(symbol)
+        if not len(bars):
+            return
+        if abs(float(bars["Close"].iloc[-1]) / live - 1) >= 0.25:
+            return  # 1-min vs daily on different split bases — skip, don't lie
+        o, h, l = bars["Open"], bars["High"], bars["Low"]
+        c, v = bars["Close"], bars["Volume"]
+        typ = (h + l + c) / 3.0
+        vwap = (typ * v).cumsum() / v.cumsum().replace(0, np.nan)
+        vol_colors = [accent if cc >= oo else "#3a4552"
+                      for oo, cc in zip(o, c)]
+
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                            row_heights=[0.76, 0.24], vertical_spacing=0.04)
+        fig.add_trace(go.Candlestick(
+            x=bars.index, open=o, high=h, low=l, close=c, showlegend=False,
+            increasing_line_color=accent, decreasing_line_color="#55606c",
+            increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
+        ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=bars.index, y=vwap, mode="lines", name="VWAP", showlegend=False,
+            line=dict(color=BLUE, width=1.2),
+            hovertemplate="VWAP %{y:.2f}<extra></extra>"), row=1, col=1)
+        fig.add_trace(go.Bar(
+            x=bars.index, y=v, marker_color=vol_colors, marker_line_width=0,
+            showlegend=False), row=2, col=1)
+
+        fig.add_hline(y=prev_close, line_color=MUTED, line_width=1,
+                      line_dash="dot", row=1, col=1, annotation_text="prior close",
+                      annotation_font_color=MUTED, annotation_font_size=9)
+        for y, col, lab in ((plan["entry"], TEXT, "entry"),
+                            (plan["stop"], RED, "stop"),
+                            (plan["target"], accent, "target")):
+            fig.add_hline(y=y, line_color=col, line_width=1, line_dash="dot",
+                          row=1, col=1, annotation_text=lab,
+                          annotation_font_color=col, annotation_font_size=10)
+
+        fig.update_layout(
+            height=390, margin=dict(l=8, r=8, t=8, b=8), bargap=0.1,
+            paper_bgcolor=INK, plot_bgcolor=INK, font=dict(color=MUTED, size=11),
+            showlegend=False,
+        )
+        fig.update_xaxes(rangeslider_visible=False, gridcolor=LINE)
+        fig.update_yaxes(gridcolor=LINE, side="right", row=1, col=1)
+        fig.update_yaxes(gridcolor=LINE, side="right", showgrid=False, row=2, col=1)
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False})
+    except Exception:
+        pass
+
+
+def render_payoff(plan: dict, option: dict | None, atr: float,
+                  accent: str) -> None:
+    """Same-day P&L across -2 ATR..+2 ATR for the stock and the option."""
+    try:
+        entry, stop, target = plan["entry"], plan["stop"], plan["target"]
+        shares = plan["shares"]
+        if not atr or atr <= 0 or shares <= 0:
+            return
+        xs = np.linspace(entry - 2 * atr, entry + 2 * atr, 61)
+        # Long stock, truncated where the stop or target would close the trade.
+        stock = shares * (np.clip(xs, stop, target) - entry)
+
+        has_opt = bool(option and "strike" in option)
+        if has_opt:
+            K = float(option["strike"])
+            contracts = int(option["contracts"])
+            cost = float(option["cost"])
+            iv = option.get("iv") or (atr / entry) * math.sqrt(252)
+            T = max(int(option.get("dte", 0)) - 1, 0) / 365.0  # ~1 day of theta
+
+            def opt_val(s: float) -> float:
+                return contracts * 100 * bs_call_price(s, K, T, iv)
+
+            opt = np.array([opt_val(s) for s in xs]) - cost
+
+        fig = go.Figure()
+        fig.add_hline(y=0, line_color=LINE, line_width=1)
+        for xline, lab in ((stop, "stop"), (entry, "entry"), (target, "target")):
+            fig.add_vline(x=xline, line_color=MUTED, line_width=1, line_dash="dot",
+                          annotation_text=lab, annotation_font_size=9,
+                          annotation_font_color=MUTED)
+        fig.add_trace(go.Scatter(x=xs, y=stock, mode="lines", name="Stock",
+                                 line=dict(color=accent, width=2)))
+        if has_opt:
+            fig.add_trace(go.Scatter(x=xs, y=opt, mode="lines", name="Option",
+                                     line=dict(color=BLUE, width=2)))
+        fig.update_layout(
+            height=300, margin=dict(l=8, r=8, t=8, b=8),
+            paper_bgcolor=INK, plot_bgcolor=INK, font=dict(color=MUTED, size=11),
+            xaxis=dict(gridcolor=LINE, tickprefix="$"),
+            yaxis=dict(gridcolor=LINE, side="right", tickprefix="$"),
+            showlegend=True, legend=dict(orientation="h", y=1.03, x=0,
+                                         font=dict(size=9),
+                                         bgcolor="rgba(0,0,0,0)"),
+        )
+        st.plotly_chart(fig, use_container_width=True,
+                        config={"displayModeBar": False})
+
+        pts = [("STOP", stop), ("ENTRY", entry),
+               ("+1 ATR", entry + atr), ("TARGET", target)]
+        body = ""
+        for lab, s in pts:
+            s_pnl = shares * (min(max(s, stop), target) - entry)
+            if has_opt:
+                o_txt = f"{opt_val(s) - cost:+,.0f}"
+            else:
+                o_txt = "—"
+            body += (f'<tr><td>{lab}</td><td>${s:,.2f}</td>'
+                     f'<td>{s_pnl:+,.0f}</td><td>{o_txt}</td></tr>')
+        st.markdown(
+            '<table class="wl"><tr><th>SCENARIO</th><th>PRICE</th>'
+            '<th>STOCK P&amp;L</th><th>OPTION P&amp;L</th></tr>'
+            + body + '</table>', unsafe_allow_html=True)
+    except Exception:
+        pass
+
+
+def section(label: str) -> None:
+    st.markdown(f'<div class="meta" style="margin:16px 0 2px;'
+                f'letter-spacing:.12em">{label}</div>', unsafe_allow_html=True)
+
+
+def render_detail(symbol: str) -> None:
+    """Full drill-down panel for any watchlist symbol."""
+    r = wl.loc[symbol]
+    plan = plans.get(symbol)
+    if plan is None:
+        return
+    style = str(r["style"])
+    mom = style == "momentum"
+    acc = AMBER if mom else BLUE
+    badge_cls = "badge-mom" if mom else "badge-mr"
+    live, prev_close = float(r["live"]), float(r["prev_close"])
+    day_pct = float(r["day_pct"])
+    chg_cls = "tk-chg-up" if day_pct >= 0 else "tk-chg-dn"
+    rvol_txt = f'{r["rvol"]:.1f}×' if pd.notna(r["rvol"]) else "—"
+
+    st.markdown(f"""
+<div class="ticket">
+  <div class="ticket-rule"></div>
+  <span class="badge {badge_cls}">{style.upper()}</span>
+  <div class="tk-sym" style="font-size:2.2rem">{symbol}</div>
+  <div class="tk-px">${live:,.2f}
+    <span class="{chg_cls}">{day_pct:+.1%} today</span></div>
+  <div class="lvls">
+    <div class="lvl"><div class="lab">ENTRY</div>
+      <div class="val">${plan["entry"]:,.2f}</div></div>
+    <div class="lvl"><div class="lab">STOP</div>
+      <div class="val val-stop">${plan["stop"]:,.2f}</div></div>
+    <div class="lvl"><div class="lab">TARGET</div>
+      <div class="val" style="color:{acc}">${plan["target"]:,.2f}</div></div>
+  </div>
+  <div class="meta"><b>{plan["shares"]} shares</b> ≈ ${plan["notional"]:,.0f}
+     · risk ${plan["risk_dollars"]:,.0f} · {plan["reward_risk"]}R
+     · flat by <b>{plan["time_exit"]}</b></div>
+  <div class="meta">{style} · score <b>{float(r["score"]):.2f}</b>
+     · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
+     · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}</div>
+</div>
+""", unsafe_allow_html=True)
+
+    option = option_for(symbol, plan["entry"])
+    section("3-MONTH DAILY · 20/50 SMA")
+    render_daily(symbol, acc)
+    section("TODAY · 5-MIN")
+    render_intraday(symbol, plan, acc, prev_close, live)
+    section("PROJECTED SAME-DAY PAYOFF")
+    render_payoff(plan, option, float(r["atr"]), acc)
+
+
 # ----------------------------------------------------------------- header ---
 
 left, right = st.columns([3, 1])
@@ -143,6 +373,7 @@ if "error" in res:
     st.stop()
 
 card, wl, diag = res["card"], res["watchlist"], res["diag"]
+plans = res.get("plans", {})
 
 st.markdown(
     f'<span class="db-pill">{card["phase_label"]}</span>&nbsp;'
@@ -212,33 +443,10 @@ st.markdown(f"""
 
 # ------------------------------------------------------------------- chart ---
 
-try:
-    bars = intraday(card["symbol"])
-    if len(bars) and abs(float(bars["Close"].iloc[-1]) / card["live"] - 1) < 0.25:
-        fig = go.Figure(go.Candlestick(
-            x=bars.index, open=bars["Open"], high=bars["High"],
-            low=bars["Low"], close=bars["Close"],
-            increasing_line_color=accent, decreasing_line_color="#55606c",
-            increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
-        ))
-        for y, c, lab in ((p["entry"], TEXT, "entry"),
-                          (p["stop"], RED, "stop"),
-                          (p["target"], accent, "target")):
-            fig.add_hline(y=y, line_color=c, line_width=1, line_dash="dot",
-                          annotation_text=lab, annotation_font_color=c,
-                          annotation_font_size=10)
-        fig.update_layout(
-            height=330, margin=dict(l=8, r=8, t=8, b=8),
-            paper_bgcolor=INK, plot_bgcolor=INK,
-            font=dict(color=MUTED, size=11),
-            xaxis=dict(rangeslider_visible=False, gridcolor=LINE),
-            yaxis=dict(gridcolor=LINE, side="right"),
-            showlegend=False,
-        )
-        st.plotly_chart(fig, use_container_width=True,
-                        config={"displayModeBar": False})
-except Exception:
-    pass  # a missing chart never blocks the card
+section("TODAY · 5-MIN")
+render_intraday(card["symbol"], p, accent, card["prev_close"], card["live"])
+section("PROJECTED SAME-DAY PAYOFF")
+render_payoff(p, o, card["atr"], accent)
 
 # --------------------------------------------------------------- watchlist ---
 
@@ -265,6 +473,16 @@ st.markdown(
     f'<span class="dot" style="background:{BLUE}"></span>mean-reversion</div>',
     unsafe_allow_html=True,
 )
+
+# ------------------------------------------------------------ detail view ---
+
+st.markdown("##### Inspect a symbol")
+choice = st.selectbox(
+    "watchlist detail", ["—"] + list(wl.index), index=0,
+    key="detail_sym", label_visibility="collapsed",
+)
+if choice and choice != "—":
+    render_detail(choice)
 
 # ------------------------------------------------------------- diagnostics ---
 

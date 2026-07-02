@@ -89,6 +89,12 @@ def market_phase(ts: datetime | None = None) -> str:
     return "overnight"
 
 
+def _fmt_asof(ts: datetime) -> str:
+    """'Wed Jul 01, 2026 · 9:07 PM ET' — no platform-specific %-I/%#I."""
+    hour12 = ts.hour % 12 or 12
+    return f"{ts:%a %b %d, %Y} · {hour12}:{ts:%M %p} ET"
+
+
 PHASE_LABEL = {
     "open": "Market open — live scan",
     "premarket": "Pre-market — scanning for the open",
@@ -144,6 +150,32 @@ def _z(s: pd.Series) -> pd.Series:
     if not sd or math.isnan(sd):
         return pd.Series(0.0, index=s.index)
     return ((s - s.mean()) / sd).fillna(0.0)
+
+
+# --------------------------------------------------------- option pricing ---
+
+RISK_FREE = 0.045  # coarse short-rate; near-dated calls barely care about it
+
+
+def _norm_cdf(x: float) -> float:
+    """Standard-normal CDF via the error function (no scipy dependency)."""
+    return 0.5 * (1.0 + math.erf(x / math.sqrt(2.0)))
+
+
+def bs_call_price(S: float, K: float, T: float, sigma: float,
+                  r: float = RISK_FREE) -> float:
+    """Black–Scholes value of a European call. T in years, sigma annualized.
+
+    Degenerate inputs (expired, zero vol, non-positive price/strike) collapse
+    to intrinsic value so the payoff curve stays well-defined at every node.
+    """
+    S, K, T, sigma = float(S), float(K), float(T), float(sigma)
+    if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
+        return max(S - K, 0.0)
+    srt = sigma * math.sqrt(T)
+    d1 = (math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / srt
+    d2 = d1 - srt
+    return S * _norm_cdf(d1) - K * math.exp(-r * T) * _norm_cdf(d2)
 
 
 # ----------------------------------------------------------------- stage 1 ---
@@ -430,19 +462,25 @@ def run_scan(progress=None) -> dict:
     card = {
         "symbol": sym, "name": name, "style": str(top["style"]),
         "score": round(float(top["score"]), 2),
-        "live": plan["entry"],
+        "live": plan["entry"], "prev_close": float(top["prev_close"]),
+        "atr": float(top["atr"]),
         "day_pct": float(top["day_pct"]), "gap_pct": float(top["gap_pct"]),
         "rvol": float(top["rvol"]) if pd.notna(top["rvol"]) else None,
         "atr_pct": float(top["atr_pct"]),
         "reasons": build_reasons(top),
         "plan": plan, "option": option,
         "phase": phase, "phase_label": PHASE_LABEL[phase],
-        "asof": now_et().strftime("%a %b %d, %Y · %-I:%M %p ET"),
+        "asof": _fmt_asof(now_et()),
     }
 
-    wl_cols = ["style", "score", "live", "day_pct", "rvol", "atr_pct", "rsi2"]
+    wl_cols = ["style", "score", "live", "prev_close", "day_pct", "gap_pct",
+               "rvol", "atr_pct", "rsi2", "atr", "prev_low"]
     watchlist = ranked.head(CONFIG["watchlist_n"])[wl_cols].copy()
     watchlist.index.name = "symbol"
+
+    # Every watchlist row gets the same ATR-based plan the champion gets, so the
+    # detail view can show entry/stop/target for any symbol without a re-scan.
+    plans = {str(s): build_plan(ranked.loc[s]) for s in watchlist.index}
 
     diag = {
         "universe": len(universe), "source": source,
@@ -450,7 +488,7 @@ def run_scan(progress=None) -> dict:
         "quarantined": quarantined,
         "phase": phase, "elapsed_s": round(time.time() - t0, 1),
     }
-    return {"card": card, "watchlist": watchlist, "diag": diag}
+    return {"card": card, "watchlist": watchlist, "plans": plans, "diag": diag}
 
 
 if __name__ == "__main__":
