@@ -398,10 +398,16 @@ def ntfy_send(title: str, message: str, priority: str = "default",
     topic = ntfy_topic()
     if not topic:
         return False
+    # HTTP headers are latin-1 only — an em-dash in the title would make
+    # requests raise (and the alert silently vanish). Body stays UTF-8.
+    safe_title = (title.replace("—", "-").replace("–", "-")
+                  .replace("·", "|").encode("ascii", "ignore")
+                  .decode().strip() or "DAYBREAK")
     try:
         r = requests.post(
             f"https://ntfy.sh/{topic}", data=message.encode("utf-8"),
-            headers={"Title": title, "Priority": priority, "Tags": tags},
+            headers={"Title": safe_title, "Priority": priority,
+                     "Tags": tags},
             timeout=8)
         return r.status_code < 300
     except Exception:
