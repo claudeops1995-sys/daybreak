@@ -163,12 +163,32 @@ def _day_bars(symbol: str, d) -> pd.DataFrame:
 
 
 def simulate(bars: pd.DataFrame, start: datetime, entry: float, stop: float,
-             target: float, exit_ts: datetime, shares: int) -> dict:
-    """Walk 5-min bars: stop / target / time exit. Stop-first on ambiguous
-    bars (both levels inside one bar) — the conservative read."""
+             target: float, exit_ts: datetime, shares: int,
+             entry_kind: str = "market") -> dict:
+    """Walk 5-min bars: fill (per entry_kind), then stop / target / time
+    exit. Stop-first on ambiguous bars (both levels inside one bar) — the
+    conservative read.
+
+    entry_kind: market = filled at `entry` on the first bar;
+    stop_over = filled when a bar trades up through `entry` (stalking
+    momentum); limit = filled when a bar trades down to `entry` (stalking
+    mean-reversion). No touch by the exit cutoff -> no_fill.
+    """
     active = bars[(bars.index >= start) & (bars.index <= exit_ts)]
     if active.empty:
         return {"error": "no bars in trade window"}
+    if entry_kind == "stop_over":
+        hit = active[active["High"] >= entry]
+        if hit.empty:
+            return {"no_fill": True, "entry_kind": entry_kind,
+                    "exit_reason": "no_fill"}
+        active = active[active.index >= hit.index[0]]
+    elif entry_kind == "limit":
+        hit = active[active["Low"] <= entry]
+        if hit.empty:
+            return {"no_fill": True, "entry_kind": entry_kind,
+                    "exit_reason": "no_fill"}
+        active = active[active.index >= hit.index[0]]
     exit_px, reason, exit_at = None, None, None
     for ts, b in active.iterrows():
         if float(b["Low"]) <= stop:
@@ -185,6 +205,8 @@ def simulate(bars: pd.DataFrame, start: datetime, entry: float, stop: float,
     r_of = (lambda x: round(x / risk, 2)) if risk > 0 else (lambda x: None)
     return {
         "entry": round(entry, 2), "exit": round(exit_px, 2),
+        "entry_kind": entry_kind,
+        "filled_at_et": str(active.index[0]),
         "exit_reason": reason, "exit_at_et": str(exit_at),
         "realized_r": r_of(exit_px - entry),
         "mfe_r": r_of(float(held["High"].max()) - entry),
@@ -245,24 +267,31 @@ def _score_card(sc: dict, d, ex_t: dtime) -> dict:
 
     entry, stop, target = plan["entry"], plan["stop"], plan["target"]
     shares = int(plan["shares"])
+    # Stalking plans fill via their trigger (stop-over / limit); triggered
+    # plans are market entries at the frozen price.
+    stalking = plan.get("status") == "stalking"
+    kind = plan.get("entry_kind", "market") if stalking else "market"
     out: dict = {"symbol": sym, "style": sc["style"],
                  "plan": {"entry": entry, "stop": stop, "target": target,
-                          "shares": shares}}
+                          "shares": shares, "status": plan.get("status"),
+                          "entry_kind": kind}}
 
-    # Model basis: assume filled at the frozen 9:45 entry.
+    # Model basis: from the 9:45 decision point.
     out["model"] = simulate(bars, decision, entry, stop, target,
-                            exit_ts, shares)
+                            exit_ts, shares, entry_kind=kind)
 
-    # Realistic-fill basis: the ~10:00 ET print after operator review.
+    # Realistic-fill basis: from ~10:00 ET after operator review. A
+    # stalking plan uses the same trigger level; a triggered plan is a
+    # market entry at the 10:00 print.
     after = bars[bars.index >= fill_t]
     if after.empty:
         out["fill"] = {"error": "no bars at/after 10:00 ET"}
     else:
         fill_px = float(after["Open"].iloc[0])
         out["fill_ref_price"] = round(fill_px, 2)
-        # Same stop/target levels; risk is re-measured from the real fill.
-        out["fill"] = simulate(bars, after.index[0], fill_px, stop, target,
-                               exit_ts, shares)
+        f_entry = entry if stalking else fill_px
+        out["fill"] = simulate(bars, after.index[0], f_entry, stop, target,
+                               exit_ts, shares, entry_kind=kind)
         if out["model"].get("realized_r") is not None and \
            out["fill"].get("realized_r") is not None:
             out["slippage_r"] = round(out["fill"]["realized_r"]

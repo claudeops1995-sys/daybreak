@@ -382,6 +382,7 @@ def build_features(universe: list[str], progress=None) -> pd.DataFrame:
         price = float(c.iloc[-1])
         prev_close = float(c.iloc[-2]) if has_today else price
         prev_low = float(l.iloc[-2]) if has_today else float(l.iloc[-1])
+        prev_high = float(h.iloc[-2]) if has_today else float(h.iloc[-1])
 
         # Vendor split-adjustment glitches around split dates can show a
         # phantom 2-4x "move" between adjusted history and raw quotes.
@@ -413,6 +414,7 @@ def build_features(universe: list[str], progress=None) -> pd.DataFrame:
             "price": price,
             "prev_close": prev_close,
             "prev_low": prev_low,
+            "prev_high": prev_high,
             "today_open": float(o.iloc[-1]) if has_today else np.nan,
             "today_vol": float(v.iloc[-1]) if has_today else np.nan,
             "avg_vol20": float(v.rolling(20).mean().iloc[-1]),
@@ -465,14 +467,39 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     out = cands.copy()
     out["live"] = np.nan
     out["quote_time"] = pd.NaT
+    ts = now_et()
+    today = ts.date()
+    close_t = session_close_time(today)
     for t in syms:
         try:
-            closes = live[t]["Close"].dropna()
-            if len(closes):
-                out.loc[t, "live"] = float(closes.iloc[-1])
-                out.loc[t, "quote_time"] = closes.index[-1]
+            sub = live[t].dropna()
+            closes = sub["Close"]
+            if not len(closes):
+                continue
+            out.loc[t, "live"] = float(closes.iloc[-1])
+            out.loc[t, "quote_time"] = closes.index[-1]
+            # Intraday anchors from the same download (no extra fetch);
+            # only when the bars are actually today's — a stale overnight
+            # frame must not masquerade as a session.
+            idx = sub.index
+            if idx[-1].date() != today:
+                continue
+            out.loc[t, "today_high"] = float(sub["High"].max())
+            out.loc[t, "today_low"] = float(sub["Low"].min())
+            orb = sub[(idx.time >= dtime(9, 30)) & (idx.time < dtime(9, 45))]
+            if len(orb) and ts.time() >= dtime(9, 45):
+                out.loc[t, "or_high"] = float(orb["High"].max())
+            rth = sub[(idx.time >= dtime(9, 30)) & (idx.time < close_t)]
+            vsum = float(rth["Volume"].sum()) if len(rth) else 0.0
+            if vsum > 0:
+                typ = (rth["High"] + rth["Low"] + rth["Close"]) / 3.0
+                out.loc[t, "vwap_live"] = float(
+                    (typ * rth["Volume"]).sum() / vsum)
         except Exception:
             continue
+    for col in ("today_high", "today_low", "or_high", "vwap_live"):
+        if col not in out.columns:
+            out[col] = np.nan
     out["live"] = out["live"].fillna(out["price"])
     # If the 1-minute quote disagrees with the daily series by >25%, the two
     # series are on different split-adjustment bases — trust the daily close.
@@ -571,6 +598,58 @@ def _target_scale(phase: str | None, now: datetime | None) -> float:
     return math.sqrt(frac)
 
 
+def _momentum_anchor(r: pd.Series, ref: float,
+                     phase: str | None) -> tuple[float, str, str, str]:
+    """(entry, status, entry_kind, note) for a momentum plan.
+
+    Anchored to structure — opening-range high with VWAP confirmation —
+    instead of wherever price happens to sit at scan time.
+    """
+    orh, thi = r.get("or_high"), r.get("today_high")
+    pvh, vw = r.get("prev_high"), r.get("vwap_live")
+    if phase == "open" and pd.notna(orh):
+        anchor, lab = float(orh), "OR high"
+    elif pd.notna(thi):
+        anchor, lab = float(thi), "session high"
+    elif pd.notna(pvh):
+        anchor, lab = float(pvh), "prev-day high"
+    else:
+        anchor, lab = ref, "live"
+    triggered = (phase == "open" and ref >= anchor
+                 and (pd.isna(vw) or ref >= float(vw)))
+    if triggered:
+        note = f"Triggered — through the {lab}"
+        note += ", above VWAP." if pd.notna(vw) else "."
+        return ref, "triggered", "market", note
+    if phase == "open" and ref >= anchor and pd.notna(vw) and ref < float(vw):
+        e = float(vw)
+        return (e, "stalking", "stop_over",
+                f"Stalking — through the {lab} but below VWAP; "
+                f"buy the VWAP reclaim ≈ ${e:,.2f}.")
+    e = max(anchor, ref)
+    return (e, "stalking", "stop_over",
+            f"Stalking — buy stop ${e:,.2f} over the {lab}.")
+
+
+def _meanrev_anchor(r: pd.Series, ref: float, atr: float,
+                    phase: str | None) -> tuple[float, str, str, str]:
+    """(entry, status, entry_kind, note) for a mean-reversion plan —
+    a limit at the flush zone, never chasing the bounce."""
+    tlo = r.get("today_low")
+    if pd.notna(tlo):
+        zone = float(tlo) + 0.15 * atr
+        if phase == "open" and ref <= zone:
+            return (ref, "triggered", "market",
+                    "In the flush zone — scale in here, not chasing green.")
+        e = min(ref, zone)
+        return (e, "stalking", "limit",
+                f"Stalking — limit ${e:,.2f} at the flush zone "
+                f"(session low + 0.15 ATR).")
+    return (ref, "stalking", "limit",
+            "Enter the flush — scale in near the reference, not chasing "
+            "green.")
+
+
 def build_plan(r: pd.Series, settings: dict | None = None,
                phase: str | None = None, now: datetime | None = None) -> dict:
     s = {**DEFAULT_SETTINGS, **(settings or {})}
@@ -578,14 +657,15 @@ def build_plan(r: pd.Series, settings: dict | None = None,
     atr = float(r["atr"])
     scale = _target_scale(phase, now)
     if r["style"] == "momentum":
-        stop = ref - CONFIG["momentum_stop_atr"] * atr
-        tgt = ref + CONFIG["momentum_tgt_atr"] * atr * scale
-        note = "Enter on strength — price holding above the opening range."
+        entry, status, entry_kind, note = _momentum_anchor(r, ref, phase)
+        stop = entry - CONFIG["momentum_stop_atr"] * atr
+        tgt = entry + CONFIG["momentum_tgt_atr"] * atr * scale
     else:
-        stop = min(float(r["prev_low"]), ref - CONFIG["meanrev_stop_atr"] * atr)
-        tgt = ref + CONFIG["meanrev_tgt_atr"] * atr * scale
-        note = "Enter the flush — scale in near the reference, not chasing green."
-    ref, stop, tgt = _round_px(ref), _round_px(stop), _round_px(tgt)
+        entry, status, entry_kind, note = _meanrev_anchor(r, ref, atr, phase)
+        stop = min(float(r["prev_low"]),
+                   entry - CONFIG["meanrev_stop_atr"] * atr)
+        tgt = entry + CONFIG["meanrev_tgt_atr"] * atr * scale
+    ref, stop, tgt = _round_px(entry), _round_px(stop), _round_px(tgt)
     max_shares = int(CONFIG["max_notional"] // ref) if ref > 0 else 0
     if s["risk_sizing"] and ref > stop:
         # Fixed-fractional: risk budget / stop distance, still notional-capped.
@@ -602,6 +682,7 @@ def build_plan(r: pd.Series, settings: dict | None = None,
         "tgt_scale": round(scale, 2),
         "scale_note": (f"target scaled ×{scale:.2f} — late entry"
                        if scale < 0.95 else None),
+        "status": status, "entry_kind": entry_kind,
         "entry_note": note,
         "time_exit": time_exit_label((now or now_et()).date()),
     }

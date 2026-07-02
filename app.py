@@ -398,6 +398,16 @@ def section(label: str) -> None:
                 f'letter-spacing:.12em">{label}</div>', unsafe_allow_html=True)
 
 
+def status_chip(plan: dict, accent: str) -> str:
+    """TRIGGERED solid accent · STALKING outline — the entry is an anchor,
+    not wherever price happens to sit."""
+    if plan.get("status", "triggered") == "triggered":
+        return (f' <span class="badge" style="background:{accent};'
+                f'color:#0B0F14">TRIGGERED</span>')
+    return (f' <span class="badge" style="background:transparent;'
+            f'border:1px solid {accent};color:{accent}">STALKING</span>')
+
+
 def quote_stale_txt(qt) -> str:
     """' · quote 09:44 ET (2m old)' — red when the print is >15m stale."""
     try:
@@ -445,7 +455,7 @@ def render_detail(symbol: str) -> None:
     st.markdown(f"""
 <div class="ticket">
   <div class="ticket-rule"></div>
-  <span class="badge {badge_cls}">{style.upper()}</span>
+  <span class="badge {badge_cls}">{style.upper()}</span>{status_chip(plan, acc)}
   <div class="tk-sym" style="font-size:2.2rem">{symbol}</div>
   <div class="tk-px">${live:,.2f}
     <span class="{chg_cls}">{day_pct:+.1%} today</span></div>
@@ -464,6 +474,7 @@ def render_detail(symbol: str) -> None:
      · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
      · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}
      {quote_stale_txt(r.get("quote_time"))}</div>
+  <div class="meta">{plan["entry_note"]}</div>
   {gate_html}
   {opt_html}
 </div>
@@ -597,7 +608,7 @@ def render_champion(card: dict) -> None:
     st.markdown(f"""
 <div class="ticket">
   <div class="ticket-rule"></div>
-  <span class="badge {badge_cls}">{card["style"].upper()}</span>{earn_badge}
+  <span class="badge {badge_cls}">{card["style"].upper()}</span>{status_chip(p, accent)}{earn_badge}
   <div class="tk-sym">{card["symbol"]}</div>
   <div class="tk-name">{card["name"]}</div>
   <div class="tk-px">${card["live"]:,.2f}
