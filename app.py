@@ -5,6 +5,7 @@ Deploy free:   share.streamlit.io  ->  point at this repo, main file app.py
 """
 
 import math
+from datetime import time as dt_time
 
 import numpy as np
 import pandas as pd
@@ -138,6 +139,29 @@ def option_for(symbol: str, ref: float) -> dict | None:
     return pick_option(symbol, ref)
 
 
+def option_block_html(symbol: str, o: dict | None) -> str:
+    """Render an option play as HTML — shared by champion card and details."""
+    if o and "contract" in o:
+        flags = " · ".join(o["flags"]) if o["flags"] else ""
+        return (
+            f'<div class="opt"><div class="lab">OPTION ALTERNATIVE</div>'
+            f'<div class="line">{o["contracts"]}× {symbol} '
+            f'${o["strike"]:g}C {o["expiry"]} @ ${o["mid"]:.2f} '
+            f'≈ ${o["cost"]:,.0f}</div>'
+            f'<div class="line">breakeven ${o["breakeven"]:.2f} · '
+            f'{o["dte"]} DTE · OI '
+            + (f'{o["open_interest"]:,}' if o["open_interest"] is not None else "—")
+            + "</div>"
+            + (f'<div class="flags">⚠ {flags}</div>' if flags else "")
+            + "</div>"
+        )
+    msg = (o or {}).get(
+        "unavailable",
+        "No liquid contract fits — chain unavailable or over the cap.")
+    return (f'<div class="opt"><div class="lab">OPTION ALTERNATIVE</div>'
+            f'<div class="line">{msg}</div></div>')
+
+
 # ---------------------------------------------------------------- charts ---
 
 def render_daily(symbol: str, accent: str) -> None:
@@ -170,7 +194,7 @@ def render_daily(symbol: str, accent: str) -> None:
                                          font=dict(size=9),
                                          bgcolor="rgba(0,0,0,0)"),
         )
-        st.plotly_chart(fig, use_container_width=True,
+        st.plotly_chart(fig, width="stretch",
                         config={"displayModeBar": False})
     except Exception:
         pass  # a missing chart never blocks the page
@@ -187,8 +211,14 @@ def render_intraday(symbol: str, plan: dict, accent: str,
             return  # 1-min vs daily on different split bases — skip, don't lie
         o, h, l = bars["Open"], bars["High"], bars["Low"]
         c, v = bars["Close"], bars["Volume"]
-        typ = (h + l + c) / 3.0
-        vwap = (typ * v).cumsum() / v.cumsum().replace(0, np.nan)
+        # Session VWAP: regular hours only — pre/post prints would skew it.
+        # Before the open there are no RTH bars yet; fall back to all bars.
+        rth = ((bars.index.time >= dt_time(9, 30))
+               & (bars.index.time < dt_time(16, 0)))
+        vb = bars[rth] if rth.any() else bars
+        vtyp = (vb["High"] + vb["Low"] + vb["Close"]) / 3.0
+        vwap = ((vtyp * vb["Volume"]).cumsum()
+                / vb["Volume"].cumsum().replace(0, np.nan))
         vol_colors = [accent if cc >= oo else "#3a4552"
                       for oo, cc in zip(o, c)]
 
@@ -200,7 +230,7 @@ def render_intraday(symbol: str, plan: dict, accent: str,
             increasing_fillcolor=accent, decreasing_fillcolor="#3a4552",
         ), row=1, col=1)
         fig.add_trace(go.Scatter(
-            x=bars.index, y=vwap, mode="lines", name="VWAP", showlegend=False,
+            x=vwap.index, y=vwap, mode="lines", name="VWAP", showlegend=False,
             line=dict(color=BLUE, width=1.2),
             hovertemplate="VWAP %{y:.2f}<extra></extra>"), row=1, col=1)
         fig.add_trace(go.Bar(
@@ -225,7 +255,7 @@ def render_intraday(symbol: str, plan: dict, accent: str,
         fig.update_xaxes(rangeslider_visible=False, gridcolor=LINE)
         fig.update_yaxes(gridcolor=LINE, side="right", row=1, col=1)
         fig.update_yaxes(gridcolor=LINE, side="right", showgrid=False, row=2, col=1)
-        st.plotly_chart(fig, use_container_width=True,
+        st.plotly_chart(fig, width="stretch",
                         config={"displayModeBar": False})
     except Exception:
         pass
@@ -276,7 +306,7 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
                                          font=dict(size=9),
                                          bgcolor="rgba(0,0,0,0)"),
         )
-        st.plotly_chart(fig, use_container_width=True,
+        st.plotly_chart(fig, width="stretch",
                         config={"displayModeBar": False})
 
         pts = [("STOP", stop), ("ENTRY", entry),
@@ -305,10 +335,12 @@ def section(label: str) -> None:
 
 def render_detail(symbol: str) -> None:
     """Full drill-down panel for any watchlist symbol."""
-    r = wl.loc[symbol]
+    # A rescan can change the watchlist while detail_sym still holds the old
+    # selection — bail quietly rather than KeyError on a vanished symbol.
     plan = plans.get(symbol)
-    if plan is None:
+    if plan is None or symbol not in wl.index:
         return
+    r = wl.loc[symbol]
     style = str(r["style"])
     mom = style == "momentum"
     acc = AMBER if mom else BLUE
@@ -317,6 +349,13 @@ def render_detail(symbol: str) -> None:
     day_pct = float(r["day_pct"])
     chg_cls = "tk-chg-up" if day_pct >= 0 else "tk-chg-dn"
     rvol_txt = f'{r["rvol"]:.1f}×' if pd.notna(r["rvol"]) else "—"
+
+    # Lazy: the chain is only fetched once a name is selected (cached 10 min).
+    try:
+        option = option_for(symbol, plan["entry"])
+    except Exception:
+        option = None
+    opt_html = option_block_html(symbol, option)
 
     st.markdown(f"""
 <div class="ticket">
@@ -339,10 +378,10 @@ def render_detail(symbol: str) -> None:
   <div class="meta">{style} · score <b>{float(r["score"]):.2f}</b>
      · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
      · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}</div>
+  {opt_html}
 </div>
 """, unsafe_allow_html=True)
 
-    option = option_for(symbol, plan["entry"])
     section("3-MONTH DAILY · 20/50 SMA")
     render_daily(symbol, acc)
     section("TODAY · 5-MIN")
@@ -361,12 +400,17 @@ with left:
         unsafe_allow_html=True,
     )
 with right:
-    if st.button("↻ Rescan", use_container_width=True):
+    if st.button("↻ Rescan", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 
 with st.spinner("Scanning the S&P 500 — first load takes about a minute…"):
-    res = cached_scan()
+    try:
+        res = cached_scan()
+    except Exception:
+        # A Yahoo timeout/rate-limit must degrade to the error card,
+        # never to a raw Streamlit exception page.
+        res = {"error": "Scan failed — data source unreachable or rate-limited."}
 
 if "error" in res:
     st.error(res["error"] + " Tap Rescan to try again.")
@@ -388,29 +432,11 @@ badge_cls = "badge-mom" if mom else "badge-mr"
 accent = AMBER if mom else BLUE
 chg_cls = "tk-chg-up" if card["day_pct"] >= 0 else "tk-chg-dn"
 p = card["plan"]
-rvol_txt = f'{card["rvol"]:.1f}×' if card["rvol"] else "—"
+rvol_txt = f'{card["rvol"]:.1f}×' if card["rvol"] is not None else "—"
 reasons = "".join(f"<li>{r}</li>" for r in card["reasons"])
 
 o = card.get("option")
-if o and "contract" in o:
-    flags = " · ".join(o["flags"]) if o["flags"] else ""
-    opt_html = (
-        f'<div class="opt"><div class="lab">OPTION ALTERNATIVE</div>'
-        f'<div class="line">{o["contracts"]}× {card["symbol"]} '
-        f'${o["strike"]:g}C {o["expiry"]} @ ${o["mid"]:.2f} '
-        f'≈ ${o["cost"]:,.0f}</div>'
-        f'<div class="line">breakeven ${o["breakeven"]:.2f} · '
-        f'{o["dte"]} DTE · OI '
-        + (f'{o["open_interest"]:,}' if o["open_interest"] is not None else "—")
-        + "</div>"
-        + (f'<div class="flags">⚠ {flags}</div>' if flags else "")
-        + "</div>"
-    )
-elif o and "unavailable" in o:
-    opt_html = (f'<div class="opt"><div class="lab">OPTION ALTERNATIVE</div>'
-                f'<div class="line">{o["unavailable"]}</div></div>')
-else:
-    opt_html = ""
+opt_html = option_block_html(card["symbol"], o)
 
 st.markdown(f"""
 <div class="ticket">

@@ -249,7 +249,10 @@ def build_features(universe: list[str], progress=None) -> pd.DataFrame:
             "above200": price > sma200,
             "trend_up": sma20 > sma50,
         })
-    return pd.DataFrame(rows).set_index("symbol")
+    df = pd.DataFrame(rows)
+    # An empty frame has no "symbol" column to index on — return it as-is
+    # so run_scan can degrade to its error card instead of a KeyError.
+    return df.set_index("symbol") if len(df) else df
 
 
 def shortlist(feat: pd.DataFrame) -> pd.DataFrame:
@@ -436,9 +439,15 @@ def run_scan(progress=None) -> dict:
     universe, source = get_universe()
 
     feat = build_features(universe, progress)
+    if feat.empty:
+        return {"error": "No usable daily data came back from Yahoo.",
+                "diag": {"universe": len(universe), "filtered": 0}}
     quarantined = feat.index[feat["split_suspect"]].tolist()
     feat = feat[~feat["split_suspect"]]
     cands = shortlist(feat)
+    if cands.empty:
+        return {"error": "No candidates survived the filters.",
+                "diag": {"universe": len(universe), "filtered": len(feat)}}
     snap = live_snapshot(cands, progress)
     ranked = score(snap)
     ranked = ranked[np.isfinite(ranked["score"])]
