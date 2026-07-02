@@ -94,6 +94,12 @@ h1, h2, h3, p, span, div { color: #E8EEF4; }
 .newsline .src { font-family:'IBM Plex Mono',monospace; font-size:.68rem;
   color:#8A97A5; }
 .whyline { font-size:.8rem; color:#FFD9A0; margin:4px 0 2px; }
+.plain { font-size:.95rem; line-height:1.5; margin:8px 0 4px;
+  color:#E8EEF4; }
+.action-row { display:flex; gap:10px; align-items:center; margin:10px 0; }
+.action-txt { font-size:.92rem; line-height:1.35; }
+.action-txt b { font-family:'IBM Plex Mono',monospace; }
+span[title] { border-bottom:1px dotted #3a4552; cursor:help; }
 .horizon { height:44px; margin:8px -16px 4px;
   background:radial-gradient(120% 130% at 50% 115%,
   rgba(255,180,84,.18), rgba(92,200,255,.06) 55%, transparent 78%); }
@@ -652,8 +658,8 @@ def card_head(*chips_html: str) -> str:
 
 
 def plan_chips(style: str, plan: dict, earnings: dict | None,
-               accent: str) -> str:
-    parts = [chip(style.upper(), accent, "solid")]
+               accent: str, lead: str = "") -> str:
+    parts = ([lead] if lead else []) + [chip(style.upper(), accent, "solid")]
     if plan.get("status", "triggered") == "triggered":
         parts.append(chip("TRIGGERED", accent, "solid"))
     else:
@@ -872,10 +878,87 @@ plans = res.get("plans", {})
 gates = res.get("gates", {})
 earn_map = res.get("earnings", {})
 
+def render_actions() -> None:
+    """Front section: what to actually DO today, in plain English, with
+    total capital deployed shown prominently."""
+    book = load_positions()
+    rows = []
+    for pos in book.get("open", []):
+        pnl = pos.get("pnl") or 0
+        days = pos.get("days_held") or "?"
+        if pos.get("pending_exit"):
+            reason = ("strength returned"
+                      if pos.get("pending_reason") == "rsi_exit"
+                      else f'day-{pos.get("max_days", 10)} time cap')
+            rows.append(chip("SELL TODAY", AMBER, "solid")
+                        + f'<span class="action-txt">Sell '
+                        f'<b>{pos["symbol"]}</b> at the close — {reason} '
+                        f'({pnl:+,.0f})</span>')
+        else:
+            rows.append(chip("HOLD", BLUE, "outline")
+                        + f'<span class="action-txt">Hold '
+                        f'<b>{pos["symbol"]}</b> — day {days}, '
+                        f'{pnl:+,.0f}</span>')
+    for c in (book.get("closed") or [])[-3:]:
+        try:
+            from engine import now_et
+            age = (now_et().date()
+                   - pd.Timestamp(c["exit_date"]).date()).days
+            if age <= 1:
+                rows.append(chip("STOPPED", RED, "warn")
+                            + f'<span class="action-txt">'
+                            f'<b>{c["symbol"]}</b> stopped at '
+                            f'${c["exit"]:,.2f} ({c["pnl"]:+,.0f})</span>')
+        except Exception:
+            continue
+
+    # New signals from the live scan.
+    open_syms = {q["symbol"] for q in book.get("open", [])}
+    for _style in STYLES:
+        sc = res.get("style_cards", {}).get(_style) or {}
+        if sc.get("no_trade") or not sc.get("symbol"):
+            continue
+        plan = sc.get("plan", {})
+        acc = AMBER if _style == "momentum" else BLUE
+        if sc["symbol"] in open_syms:
+            continue  # covered by its HOLD row
+        if _style != "momentum" and len(open_syms) >= SETTINGS["mr_max_open"]:
+            rows.append(chip("SIGNAL ONLY", variant="muted")
+                        + f'<span class="action-txt"><b>{sc["symbol"]}</b> '
+                        f'qualified but the book is at capacity</span>')
+        elif plan.get("kind") == "swing":
+            rows.append(chip("NEW BUY", acc, "solid")
+                        + f'<span class="action-txt">Buy '
+                        f'<b>{plan.get("shares")} {sc["symbol"]}</b> around '
+                        f'${plan.get("entry"):,.2f} (limit)</span>')
+        else:
+            verb = ("in this morning"
+                    if plan.get("status") == "triggered"
+                    else f'on the break of ${plan.get("entry"):,.2f}')
+            rows.append(chip("DAY TRADE", acc, "solid")
+                        + f'<span class="action-txt"><b>{sc["symbol"]}</b> '
+                        f'{verb}, out by {plan.get("time_exit")}</span>')
+
+    deployed = book.get("deployed") or 0
+    n_open = len(book.get("open", []))
+    body = "".join(f'<div class="action-row">{r}</div>' for r in rows) \
+        if rows else ('<div class="sub">No actions — no open positions, '
+                      'nothing new qualified.</div>')
+    st.markdown(
+        '<div class="card"><div class="card-rule"></div>'
+        + '<div class="eyebrow" style="margin-top:0">TODAY&#39;S ACTIONS'
+        + '</div>' + body
+        + f'<div class="px-line" style="margin-top:10px">'
+        f'${deployed:,.0f} deployed'
+        f'<span class="sub" style="font-size:.8rem"> · {n_open} open '
+        f'swing position{"s" if n_open != 1 else ""}</span></div>'
+        + '</div>', unsafe_allow_html=True)
+
+
 # --------------------------------------------------------------------- IA ---
-# Three tabs; TODAY's vertical rhythm is tape → dual champions → watchlist
-# → detail. The glance strip answers "tape / two trades / do they qualify"
-# before any scrolling.
+# Three tabs; TODAY's vertical rhythm is actions → tape → dual champions
+# → watchlist → detail. The glance strip answers "tape / two trades / do
+# they qualify" before any scrolling.
 
 tape = cached_tape()
 risk_off = ((tape.get("SPY") or {}).get("day_pct") or 0) < -0.01
@@ -884,6 +967,10 @@ tab_today, tab_journal, tab_settings = st.tabs(
     ["TODAY", "JOURNAL", "SETTINGS"])
 
 with tab_today:
+    try:
+        render_actions()
+    except Exception:
+        notice("actions unavailable — position book unreadable")
     st.markdown(
         f'<span class="db-pill">{PHASE_LABEL[res["phase"]]}</span>&nbsp;'
         f'<span class="db-pill">{res["asof"]}</span>',
@@ -968,28 +1055,65 @@ def render_champion(card: dict) -> None:
     top_news = (f'<div class="whyline">⚡ {why}</div>' if why else "") \
         + (news_html(items, 1) if items else "") + heat
 
+    # Plain-English action sentence — the numbers people actually need.
+    if p.get("kind") == "swing":
+        plain = (f'Buy <b>{p["shares"]} shares</b> around '
+                 f'<b>${p["entry"]:,.2f}</b> (${p["notional"]:,.0f}). '
+                 f'Safety exit if it drops to ${p["stop"]:,.2f}. '
+                 f'Sell the first day it closes strong — usually 3–5 days. '
+                 f'{p.get("max_days", 10)} days max.')
+    else:
+        how = ("get in this morning" if p.get("status") == "triggered"
+               else f'in on the break of ${p["entry"]:,.2f}')
+        tgt_txt = (f', take profits at ${p["target"]:,.2f}'
+                   if p.get("target") is not None else "")
+        plain = (f'Day trade only — {how}, out by <b>{p["time_exit"]}</b>. '
+                 f'Safety exit ${p["stop"]:,.2f}{tgt_txt}.')
+
+    # Position-aware status chip: BUY / ALREADY HELD / SIGNAL ONLY.
+    lead = ""
+    try:
+        book = load_positions()
+        open_syms = {q["symbol"] for q in book.get("open", [])}
+        if card["symbol"] in open_syms:
+            lead = chip("ALREADY HELD", accent, "outline")
+        elif not mom and len(open_syms) >= SETTINGS["mr_max_open"]:
+            lead = chip("SIGNAL ONLY — AT CAPACITY", variant="muted")
+        else:
+            lead = chip("BUY", accent, "solid")
+    except Exception:
+        pass
+
     st.markdown(
         '<div class="card"><div class="card-rule"></div>'
-        + plan_chips(card["style"], p, card.get("earnings"), accent)
+        + plan_chips(card["style"], p, card.get("earnings"), accent, lead)
         + f'<div class="sym">{card["symbol"]}</div>'
         + f'<div class="sub">{card["name"]}</div>'
         + top_news
+        + f'<div class="plain">{plain}</div>'
         + f'<div class="px-line">${card["live"]:,.2f} '
         + f'<span class="{chg_cls}">{card["day_pct"]:+.1%} today</span></div>'
         + levels_html(p, accent, o, card["atr"])
         + plan_meta_html(p)
-        + f'<div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt} '
-        + f'· ATR {card["atr_pct"]:.1%}'
-        + f'{quote_stale_txt(card.get("quote_time"))}</div>'
+        + f'<div class="meta">{p["entry_note"]}</div>'
         + cautions
-        + f'<div class="why"><div class="lab">WHY THIS TRADE</div>'
-        + f'<ul>{reasons}</ul>'
-        + f'<div class="meta" style="margin-top:8px">{p["entry_note"]}</div>'
-        + f'</div>{opt_html}</div>',
+        + opt_html + '</div>',
         unsafe_allow_html=True)
-    if len(items) > 1:
-        with st.expander(f"More headlines ({len(items) - 1})"):
-            st.markdown(news_html(items[1:]), unsafe_allow_html=True)
+
+    # Everything nerdy lives behind the tap.
+    with st.expander("Details — factors, numbers & more headlines"):
+        factor = (
+            f'<div class="meta">score <b>{card["score"]:.2f}</b> · '
+            f'<span title="open vs yesterday close">gap '
+            f'{card["gap_pct"]:+.1%}</span> · '
+            f'<span title="volume vs a normal day">rvol {rvol_txt}</span> · '
+            f'<span title="its typical daily move">ATR '
+            f'{card["atr_pct"]:.1%}</span>'
+            f'{quote_stale_txt(card.get("quote_time"))}</div>')
+        why_block = (f'<div class="why"><div class="lab">WHY THIS TRADE'
+                     f'</div><ul>{reasons}</ul></div>')
+        more = news_html(items[1:]) if len(items) > 1 else ""
+        st.markdown(factor + why_block + more, unsafe_allow_html=True)
     # Charts and payoff live in the detail flow — the champion is the
     # default detail selection, so they appear right below the watchlist.
 
@@ -1086,7 +1210,26 @@ def render_journal() -> None:
         days = load_journal()
     except Exception:
         days = []
-    if not days:
+    book = load_positions()
+
+    # ---- simple win/loss ledger first ----------------------------------
+    ledger = []
+    for c in book.get("closed", []):
+        ledger.append({"date": str(c.get("exit_date", ""))[:10],
+                       "sym": c.get("symbol", ""),
+                       "inpx": c.get("entry"), "out": c.get("exit"),
+                       "pnl": c.get("pnl", 0), "kind": "swing"})
+    for rec in days:
+        m = ((rec.get("outcomes") or {}).get("styles", {})
+             .get("momentum") or {})
+        mm = m.get("model") or {}
+        if mm.get("exit") is not None and not m.get("swing"):
+            ledger.append({"date": rec["date"], "sym": m.get("symbol", ""),
+                           "inpx": mm.get("entry"), "out": mm.get("exit"),
+                           "pnl": mm.get("pnl_stock", 0), "kind": "day"})
+    ledger.sort(key=lambda r: r["date"], reverse=True)
+
+    if not days and not ledger and not book.get("open"):
         st.markdown(
             '<div class="meta">No journal entries yet. The morning workflow '
             'freezes the official cards at ~9:45 ET each weekday and the '
@@ -1095,6 +1238,46 @@ def render_journal() -> None:
             unsafe_allow_html=True)
         return
 
+    for pos in book.get("open", []):
+        st.markdown(
+            f'<div class="action-row">{chip("OPEN", BLUE, "outline")}'
+            f'<span class="action-txt"><b>{pos["symbol"]}</b> — '
+            f'day {pos.get("days_held", "?")}, '
+            f'{(pos.get("pnl") or 0):+,.0f} · '
+            f'{pos.get("instruction", "HOLD")}</span></div>',
+            unsafe_allow_html=True)
+
+    if ledger:
+        lrows = ""
+        wins = sum(1 for r in ledger if (r["pnl"] or 0) > 0)
+        total = sum(r["pnl"] or 0 for r in ledger)
+        for r in ledger[:30]:
+            wl = ('<span style="color:#FFB454">✓</span>'
+                  if (r["pnl"] or 0) > 0
+                  else '<span style="color:#E5484D">✕</span>')
+            lrows += (f'<tr><td>{r["date"][5:]}</td><td>{r["sym"]}</td>'
+                      f'<td>{r["kind"]}</td>'
+                      f'<td>{(f"{r['inpx']:,.2f}" if r["inpx"] else "—")}</td>'
+                      f'<td>{(f"{r['out']:,.2f}" if r["out"] else "—")}</td>'
+                      f'<td>{(r["pnl"] or 0):+,.0f}</td><td>{wl}</td></tr>')
+        st.markdown(
+            '<table class="wl"><tr><th>DATE</th><th>SYM</th><th>TYPE</th>'
+            '<th>IN</th><th>OUT</th><th>P&amp;L</th><th></th></tr>'
+            + lrows + '</table>'
+            + f'<div class="meta" style="margin-top:8px">{len(ledger)} '
+            f'closed · {wins} wins ({wins / len(ledger):.0%}) · '
+            f'total {total:+,.0f}</div>',
+            unsafe_allow_html=True)
+
+    with st.expander("Nerd stats — model vs fill, per style"):
+        _render_journal_stats(days)
+
+
+def _render_journal_stats(days: list[dict]) -> None:
+    if not days:
+        st.markdown('<div class="meta">No scored days yet.</div>',
+                    unsafe_allow_html=True)
+        return
     rows, stats = [], {}
     for rec in days:
         oc = (rec.get("outcomes") or {}).get("styles", {})
