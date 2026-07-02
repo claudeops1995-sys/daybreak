@@ -542,7 +542,10 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     ))
     out = cands.copy()
     out["live"] = np.nan
-    out["quote_time"] = pd.NaT
+    # tz-AWARE from birth: newer pandas raises (not coerces) when an
+    # aware stamp lands in a naive datetime64[ns] column.
+    out["quote_time"] = pd.Series(
+        pd.NaT, index=out.index, dtype="datetime64[ns, America/New_York]")
     ts = now_et()
     today = ts.date()
     close_t = session_close_time(today)
@@ -553,7 +556,9 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
             if not len(closes):
                 continue
             out.loc[t, "live"] = float(closes.iloc[-1])
-            out.loc[t, "quote_time"] = closes.index[-1]
+            qt = pd.Timestamp(closes.index[-1])
+            out.loc[t, "quote_time"] = (qt.tz_convert(ET) if qt.tzinfo
+                                        else qt.tz_localize(ET))
             # Intraday anchors from the same download (no extra fetch);
             # only when the bars are actually today's — a stale overnight
             # frame must not masquerade as a session.
@@ -585,7 +590,7 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     for t, (px, rt_ts) in rt.items():
         if t in out.index and px > 0:
             out.loc[t, "live"] = float(px)
-            out.loc[t, "quote_time"] = pd.Timestamp(rt_ts)
+            out.loc[t, "quote_time"] = pd.Timestamp(rt_ts).tz_convert(ET)
     out["live"] = out["live"].fillna(out["price"])
     # If the 1-minute quote disagrees with the daily series by >25%, the two
     # series are on different split-adjustment bases — trust the daily close.
