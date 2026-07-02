@@ -16,7 +16,7 @@ import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
 
-from engine import (DEFAULT_SETTINGS, PHASE_LABEL, bs_call_price,
+from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_price,
                     build_output, option_exit_value, pick_option, scan_market)
 
 st.set_page_config(
@@ -556,37 +556,44 @@ def render_champion(card: dict) -> None:
 </div>
 """, unsafe_allow_html=True)
 
-    section("TODAY · 5-MIN")
+    section(f'{card["symbol"]} · TODAY · 5-MIN')
     render_intraday(card["symbol"], p, accent, card["prev_close"], card["live"])
-    section("PROJECTED SAME-DAY PAYOFF")
+    section(f'{card["symbol"]} · PROJECTED SAME-DAY PAYOFF')
     render_payoff(p, o, card["atr"], accent)
 
 
-def render_no_trade(style_cards: dict) -> None:
-    """Explicit skip — near misses listed with the gate each one failed."""
-    misses = [m for sc in style_cards.values()
-              for m in sc.get("near_misses", [])]
-    misses.sort(key=lambda m: -m["score"])
+def render_style_no_trade(sc: dict) -> None:
+    """Explicit per-style skip — near misses with the gate each failed."""
+    style = sc["style"]
+    mom = style == "momentum"
+    badge_cls = "badge-mom" if mom else "badge-mr"
     rows = "".join(
-        f'<li><b>{m["symbol"]}</b> ({m["style"]} · score {m["score"]:.2f}) '
-        f'— {", ".join(m["failed"])}</li>' for m in misses)
+        f'<li><b>{m["symbol"]}</b> (score {m["score"]:.2f}) '
+        f'— {", ".join(m["failed"])}</li>' for m in sc.get("near_misses", []))
     st.markdown(f"""
 <div class="ticket">
   <div class="ticket-rule"></div>
+  <span class="badge {badge_cls}" style="opacity:.55">{style.upper()}</span>
   <span class="badge" style="background:#1E2935;color:#8A97A5">NO TRADE</span>
-  <div class="tk-sym" style="font-size:2rem">No trade today</div>
-  <div class="tk-name">Nothing cleared the gates — skipping is a position.</div>
+  <div class="tk-sym" style="font-size:1.7rem">Nothing qualified</div>
+  <div class="tk-name">No {style} name cleared the gates — skipping is a
+  position.</div>
   <div class="why"><div class="lab">NEAR MISSES · FAILED GATES</div>
     <ul>{rows}</ul></div>
 </div>
 """, unsafe_allow_html=True)
 
 
-if card is not None:
-    card["name"] = name_for(card["symbol"])
-    render_champion(card)
-else:
-    render_no_trade(res["style_cards"])
+# Two equal cards — the top pick of EACH style, momentum first.
+for _style in STYLES:
+    _sc = res["style_cards"].get(_style)
+    if _sc is None:
+        continue
+    if _sc.get("no_trade"):
+        render_style_no_trade(_sc)
+    else:
+        _sc["name"] = name_for(_sc["symbol"])
+        render_champion(_sc)
 
 # --------------------------------------------------------------- watchlist ---
 

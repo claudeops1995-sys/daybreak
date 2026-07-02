@@ -39,7 +39,7 @@ CONFIG = {
     "min_dollar_vol": 30e6,     # 20-day average daily dollar volume
     "history_period": "1y",
     "stage2_per_style": 25,     # candidates carried per style into stage 2
-    "watchlist_n": 5,
+    "watchlist_per_style": 3,   # guaranteed slots per style in the watchlist
     "momentum_stop_atr": 0.50,  # intraday stop as fraction of daily ATR
     "momentum_tgt_atr": 1.00,
     "meanrev_stop_atr": 0.60,
@@ -659,7 +659,14 @@ def build_output(scan: dict, settings: dict | None = None) -> dict:
 
     wl_cols = ["style", "score", "live", "prev_close", "day_pct", "gap_pct",
                "rvol", "atr_pct", "rsi2", "atr", "prev_low"]
-    watchlist = ranked.head(CONFIG["watchlist_n"])[wl_cols].copy()
+    # Guaranteed per-style slots — a hot momentum day can't crowd the
+    # mean-reversion alternatives out of the list.
+    wl_idx = []
+    for style in STYLES:
+        wl_idx += list(ranked[ranked["style"] == style]
+                       .head(CONFIG["watchlist_per_style"]).index)
+    watchlist = (ranked.loc[wl_idx][wl_cols]
+                 .sort_values("score", ascending=False).copy())
     watchlist.index.name = "symbol"
 
     # Every watchlist row gets the same ATR-based plan the champion gets, so the
