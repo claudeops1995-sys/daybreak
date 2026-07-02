@@ -64,9 +64,12 @@ numerals/labels. Spacing scale **4/8/12/16/24**; radii 14 (cards) / 9
   `.why li`, `.foot`) are default sans. No `#####` markdown headings —
   use `section()` → `.eyebrow`.
 - **Cards**: `.card` + `.card-rule` (dawn hairline) shell; `card_head()`
-  chip row; `levels_html()` entry/stop/target grid; `plan_meta_html()`;
-  `.opt` nested block via `option_block_html()`. Champion, detail,
-  no-trade, and option blocks are all assembled from these helpers.
+  chip row; `levels_html(p, accent, option, atr)` entry/stop/target grid —
+  pass the contract and each level also shows the per-contract option
+  price (`.ct` sub-line: quoted mid at entry, ≈ modeled exit values at
+  stop/target via `option_exit_value`); `plan_meta_html()`; `.opt` nested
+  block via `option_block_html()`. Champion, detail, no-trade, and option
+  blocks are all assembled from these helpers.
 - **Chips** via `chip(label, color, variant)`: solid (style, TRIGGERED),
   outline (STALKING, LATE ENTRY), muted (NO TRADE), warn (EARNINGS).
   Color rides a `--c` CSS custom property.

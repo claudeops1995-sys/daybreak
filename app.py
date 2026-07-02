@@ -99,6 +99,8 @@ h1, h2, h3, p, span, div { color: #E8EEF4; }
 .lvl .val { font-family:'IBM Plex Mono',monospace; font-size:1.05rem;
   font-weight:600; margin-top:2px; }
 .val-stop { color:#E5484D; }
+.lvl .ct { font-family:'IBM Plex Mono',monospace; font-size:.68rem;
+  color:#8A97A5; margin-top:2px; }
 
 .meta { font-family:'IBM Plex Mono',monospace; font-size:.78rem;
   color:#8A97A5; margin:2px 0 12px; }
@@ -535,15 +537,35 @@ def plan_chips(style: str, plan: dict, earnings: dict | None,
     return card_head(*parts)
 
 
-def levels_html(p: dict, accent: str) -> str:
+def levels_html(p: dict, accent: str, option: dict | None = None,
+                atr: float | None = None) -> str:
+    """Entry/stop/target grid; with a live contract, each level also shows
+    the option's per-contract price — quoted mid at entry, the shared
+    15:45-exit model value at stop/target (≈ marks modeled prices)."""
+    subs = {"entry": "", "stop": "", "target": ""}
+    if option and "contract" in option:
+        try:
+            per_ct = 100.0 * int(option["contracts"])
+            fb_iv = ((atr / p["entry"]) * math.sqrt(252)
+                     if atr and p["entry"] else None)
+            stop_ct = option_exit_value(option, p["stop"], fb_iv) / per_ct
+            tgt_ct = option_exit_value(option, p["target"], fb_iv) / per_ct
+            subs = {
+                "entry": f'<div class="ct">ct ${option["mid"]:.2f} mid</div>',
+                "stop": f'<div class="ct">ct ≈ ${stop_ct:.2f}</div>',
+                "target": f'<div class="ct">ct ≈ ${tgt_ct:.2f}</div>',
+            }
+        except Exception:
+            pass  # the grid must render even if the revaluation fails
     return (f'<div class="lvls">'
             f'<div class="lvl"><div class="lab">ENTRY</div>'
-            f'<div class="val">${p["entry"]:,.2f}</div></div>'
+            f'<div class="val">${p["entry"]:,.2f}</div>{subs["entry"]}</div>'
             f'<div class="lvl"><div class="lab">STOP</div>'
-            f'<div class="val val-stop">${p["stop"]:,.2f}</div></div>'
+            f'<div class="val val-stop">${p["stop"]:,.2f}</div>{subs["stop"]}'
+            f'</div>'
             f'<div class="lvl"><div class="lab">TARGET</div>'
             f'<div class="val" style="color:{accent}">${p["target"]:,.2f}'
-            f'</div></div></div>')
+            f'</div>{subs["target"]}</div></div>')
 
 
 def plan_meta_html(p: dict) -> str:
@@ -601,7 +623,7 @@ def render_detail(symbol: str) -> None:
         + f'<div class="sym sym-sm">{symbol}</div>'
         + f'<div class="px-line">${live:,.2f} '
         + f'<span class="{chg_cls}">{day_pct:+.1%} today</span></div>'
-        + levels_html(plan, acc)
+        + levels_html(plan, acc, option, float(r["atr"]))
         + plan_meta_html(plan)
         + f'<div class="meta">score <b>{float(r["score"]):.2f}</b> '
         + f'· gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt} '
@@ -772,7 +794,7 @@ def render_champion(card: dict) -> None:
         + f'<div class="sub">{card["name"]}</div>'
         + f'<div class="px-line">${card["live"]:,.2f} '
         + f'<span class="{chg_cls}">{card["day_pct"]:+.1%} today</span></div>'
-        + levels_html(p, accent)
+        + levels_html(p, accent, o, card["atr"])
         + plan_meta_html(p)
         + f'<div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt} '
         + f'· ATR {card["atr_pct"]:.1%}'
