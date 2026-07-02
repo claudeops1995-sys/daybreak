@@ -112,6 +112,10 @@ def capture(stage: str, force: bool, prefix: str, outdir: Path) -> int:
         # card) so the journal has each contract at the frozen moment,
         # plus headlines and — when a Claude key exists — a one-line
         # "why it's moving" summary (skipped silently otherwise).
+        try:
+            wsb = ds.wsb_map()
+        except Exception:
+            wsb = {}
         for style, sc in res["style_cards"].items():
             if sc.get("no_trade"):
                 continue
@@ -130,6 +134,18 @@ def capture(stage: str, force: bool, prefix: str, outdir: Path) -> int:
                     sc["why_moving"] = why
             except Exception:
                 pass
+            # Sentiment columns recorded from day one — display/testing
+            # only, never a gate (see CLAUDE.md).
+            senti: dict = {}
+            try:
+                senti.update(ds.stocktwits(sc["symbol"]))
+            except Exception:
+                pass
+            w = wsb.get(sc["symbol"])
+            if w:
+                senti["wsb_rank"] = w["rank"]
+                senti["wsb_mentions"] = w["mentions"]
+            sc["sentiment"] = senti
         try:
             rec["tape"] = engine.market_tape()
         except Exception:

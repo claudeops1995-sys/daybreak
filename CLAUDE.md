@@ -131,6 +131,11 @@ numerals/labels. Spacing scale **4/8/12/16/24**; radii 14 (cards) / 9
 - **Data-sanity guards stay on every path**: split-quarantine in
   `build_features`, >25% quote-vs-daily mismatch guard in `live_snapshot`
   and `render_intraday`.
+- **Sentiment is UNVALIDATED — display only, never gates.** Stocktwits
+  bull % and WSB mentions are shown as a chip and recorded as journal
+  columns (`sentiment`) purely so we can later TEST whether retail heat
+  predicts anything. No score, gate, or sizing may read it until the
+  journal produces evidence.
 - Widget state (`detail_sym`) can outlive a rescan — any lookup keyed by a
   symbol from session state must tolerate the symbol vanishing.
 - Commit messages end with the Claude co-author trailer; push to `main`

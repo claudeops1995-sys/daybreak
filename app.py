@@ -257,6 +257,50 @@ def cached_news(symbol: str) -> list[dict]:
         return []
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
+def cached_wsb() -> dict:
+    try:
+        return ds.wsb_map()
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def cached_heat(symbol: str) -> dict:
+    """Stocktwits + WSB mentions. Display-only — never gates anything."""
+    out: dict = {}
+    try:
+        out.update(ds.stocktwits(symbol))
+    except Exception:
+        pass
+    w = cached_wsb().get(symbol)
+    if w:
+        out["wsb_rank"] = w["rank"]
+        out["wsb_mentions"] = w["mentions"]
+    return out
+
+
+def heat_chip_html(heat: dict) -> str:
+    """'Retail heat: high · 78% bullish' — nothing at all when no data."""
+    if not heat:
+        return ""
+    rank = heat.get("wsb_rank")
+    msgs = heat.get("st_msgs") or 0
+    if (rank and rank <= 25) or msgs >= 25:
+        level = "high"
+    elif (rank and rank <= 100) or msgs >= 10:
+        level = "elevated"
+    else:
+        level = "quiet"
+    parts = [f"Retail heat: {level}"]
+    if heat.get("st_bull_pct") is not None:
+        parts.append(f'{heat["st_bull_pct"]:.0f}% bullish')
+    if rank:
+        parts.append(f'WSB #{rank} ({heat.get("wsb_mentions", 0)} mentions)')
+    return (f'<div class="meta" style="margin:4px 0 2px">'
+            f'<span class="db-pill">{" · ".join(parts)}</span></div>')
+
+
 @st.cache_data(ttl=600, show_spinner=False)
 def todays_why() -> dict:
     """symbol -> 'why it's moving' line from today's official journal
@@ -688,6 +732,10 @@ def render_detail(symbol: str) -> None:
         d_news = news_html(cached_news(symbol))
     except Exception:
         d_news = ""
+    try:
+        d_news += heat_chip_html(cached_heat(symbol))
+    except Exception:
+        pass
 
     st.markdown(
         '<div class="card"><div class="card-rule"></div>'
@@ -864,8 +912,12 @@ def render_champion(card: dict) -> None:
     except Exception:
         items = []
     why = todays_why().get(card["symbol"])
+    try:
+        heat = heat_chip_html(cached_heat(card["symbol"]))
+    except Exception:
+        heat = ""
     top_news = (f'<div class="whyline">⚡ {why}</div>' if why else "") \
-        + (news_html(items, 1) if items else "")
+        + (news_html(items, 1) if items else "") + heat
 
     st.markdown(
         '<div class="card"><div class="card-rule"></div>'
