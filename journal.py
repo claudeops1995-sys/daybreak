@@ -301,7 +301,7 @@ def _score_card(sc: dict, d, ex_t: dtime) -> dict:
     o = sc.get("option")
     if o and "contract" in o and "exit" in out["model"]:
         try:
-            v = engine.option_exit_value(o, out["model"]["exit"])
+            v = engine.option_exit_value(o, out["model"]["exit"], on=d)
             out["option"] = {
                 "contract": o["contract"], "cost": o["cost"],
                 "exit_value": round(v, 0),

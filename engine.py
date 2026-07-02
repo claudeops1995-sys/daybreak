@@ -228,18 +228,63 @@ def bs_call_price(S: float, K: float, T: float, sigma: float,
     return S * _norm_cdf(d1) - K * math.exp(-r * T) * _norm_cdf(d2)
 
 
-def option_exit_value(option: dict, S: float,
-                      fallback_iv: float | None = None) -> float:
-    """$ value of the whole option position at underlying S on same-day exit.
+def session_frac(ts: datetime | None = None) -> float:
+    """Fraction of today's session consumed at ts (0 pre-open, 1 after
+    close; half-day aware)."""
+    ts = ts or now_et()
+    close_t = session_close_time(ts.date())
+    opn = ts.replace(hour=9, minute=30, second=0, microsecond=0)
+    cls = ts.replace(hour=close_t.hour, minute=close_t.minute,
+                     second=0, microsecond=0)
+    total = (cls - opn).total_seconds()
+    if total <= 0:
+        return 1.0
+    return float(min(max((ts - opn).total_seconds() / total, 0.0), 1.0))
 
-    Single valuation convention shared by the payoff chart, the option
-    block's P&L-at-stop line, and the journal scorer.
+
+def exit_session_frac(d: date) -> float:
+    """Session fraction consumed at the hard time exit — 375/390 on a
+    normal day (15:45), 195/210 on a half day (12:45)."""
+    ex = exit_time(d)
+    consumed = (ex.hour * 60 + ex.minute) - (9 * 60 + 30)
+    return consumed / session_minutes(d)
+
+
+def option_exit_value(option: dict, S: float,
+                      fallback_iv: float | None = None,
+                      on: date | None = None) -> float:
+    """$ value of the whole option position at underlying S at the 15:45
+    time exit (not expiry): T = DTE − session fraction consumed at exit.
+
+    A 1-DTE keeps its few remaining hours of time value; a 0-DTE
+    collapses to intrinsic. Single valuation convention shared by the
+    payoff chart, the option block's P&L-at-stop line, and the journal
+    scorer.
     """
+    d = on or now_et().date()
     K = float(option["strike"])
     n = int(option["contracts"])
     iv = option.get("iv") or fallback_iv or 0.5
-    T = max(int(option.get("dte", 0)) - 1, 0) / 365.0  # ~1 day of theta
+    T = max(int(option.get("dte", 0)) - exit_session_frac(d), 0.0) / 365.0
     return n * 100.0 * bs_call_price(S, K, T, float(iv))
+
+
+def bs_call_greeks(S: float, K: float, T: float, sigma: float,
+                   r: float = RISK_FREE) -> dict:
+    """Delta and theta/day for a European call (hand-rolled, no scipy).
+
+    Degenerate inputs collapse to the intrinsic limits.
+    """
+    S, K, T, sigma = float(S), float(K), float(T), float(sigma)
+    if S <= 0 or K <= 0 or T <= 0 or sigma <= 0:
+        return {"delta": 1.0 if S > K else 0.0, "theta_day": 0.0}
+    srt = sigma * math.sqrt(T)
+    d1 = (math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / srt
+    d2 = d1 - srt
+    pdf = math.exp(-0.5 * d1 * d1) / math.sqrt(2.0 * math.pi)
+    theta = (-S * pdf * sigma / (2.0 * math.sqrt(T))
+             - r * K * math.exp(-r * T) * _norm_cdf(d2))
+    return {"delta": _norm_cdf(d1), "theta_day": theta / 365.0}
 
 
 # -------------------------------------------------------------------- tape ---

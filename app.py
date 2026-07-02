@@ -16,9 +16,10 @@ import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
 
-from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_price,
+from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_greeks,
                     build_output, earnings_candidates, earnings_guard,
-                    market_tape, option_exit_value, pick_option, scan_market)
+                    market_tape, option_exit_value, pick_option, scan_market,
+                    session_frac)
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -199,12 +200,25 @@ def option_block_html(symbol: str, o: dict | None,
     if o and "contract" in o:
         flags = " · ".join(o["flags"]) if o["flags"] else ""
         risk_line = f'<div class="line">max loss ${o["cost"]:,.0f} (full premium)'
+        greeks_line = ""
         if plan is not None:
+            fb_iv = ((atr / plan["entry"]) * math.sqrt(252)
+                     if atr and plan["entry"] else None)
             try:
-                fb_iv = ((atr / plan["entry"]) * math.sqrt(252)
-                         if atr and plan["entry"] else None)
                 stop_pnl = option_exit_value(o, plan["stop"], fb_iv) - o["cost"]
                 risk_line += f' · at stock stop {stop_pnl:+,.0f}'
+            except Exception:
+                pass
+            try:
+                iv = o.get("iv") or fb_iv or 0.5
+                t_now = max(int(o.get("dte", 0)) - session_frac(), 0.0) / 365.0
+                g = bs_call_greeks(plan["entry"], o["strike"], t_now, iv)
+                pos_theta = g["theta_day"] * 100 * o["contracts"]
+                lam = (g["delta"] * 100 * o["contracts"] * plan["entry"]
+                       / o["cost"]) if o["cost"] else float("nan")
+                greeks_line = (f'<div class="line">Δ {g["delta"]:.2f} · '
+                               f'θ {pos_theta:+,.0f}$/day · '
+                               f'λ {lam:.1f}× delta-adj leverage</div>')
             except Exception:
                 pass
         risk_line += "</div>"
@@ -216,7 +230,7 @@ def option_block_html(symbol: str, o: dict | None,
             f'<div class="line">breakeven ${o["breakeven"]:.2f} · '
             f'{o["dte"]} DTE · OI '
             + (f'{o["open_interest"]:,}' if o["open_interest"] is not None else "—")
-            + "</div>" + risk_line
+            + "</div>" + greeks_line + risk_line
             + (f'<div class="flags">⚠ {flags}</div>' if flags else "")
             + "</div>"
         )
@@ -340,14 +354,12 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
 
         has_opt = bool(option and "strike" in option)
         if has_opt:
-            K = float(option["strike"])
-            contracts = int(option["contracts"])
             cost = float(option["cost"])
-            iv = option.get("iv") or (atr / entry) * math.sqrt(252)
-            T = max(int(option.get("dte", 0)) - 1, 0) / 365.0  # ~1 day of theta
+            fb_iv = (atr / entry) * math.sqrt(252) if entry else None
 
             def opt_val(s: float) -> float:
-                return contracts * 100 * bs_call_price(s, K, T, iv)
+                # Shared 15:45-exit valuation (T = DTE − session fraction).
+                return option_exit_value(option, float(s), fb_iv)
 
             opt = np.array([opt_val(s) for s in xs]) - cost
 
