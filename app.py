@@ -56,23 +56,34 @@ h1, h2, h3, p, span, div { color: #E8EEF4; }
   font-size:.68rem; letter-spacing:.08em; color:#8A97A5;
   border:1px solid #1E2935; border-radius:999px; padding:3px 10px; }
 
-.ticket { background:#121922; border:1px solid #1E2935; border-radius:14px;
-  padding:20px 20px 16px; margin:14px 0 6px; }
-.ticket-rule { height:3px; border-radius:3px; margin:-20px -20px 16px;
+/* ---- component vocabulary (spacing scale 4/8/12/16/24) ---------------- */
+.card { background:#121922; border:1px solid #1E2935; border-radius:14px;
+  padding:16px 16px 12px; margin:12px 0 8px; }
+.card-rule { height:3px; border-radius:3px; margin:-16px -16px 12px;
   background:linear-gradient(90deg,#FFB454,#5CC8FF); }
-.badge { font-family:'IBM Plex Mono',monospace; font-size:.66rem;
-  letter-spacing:.14em; padding:4px 9px; border-radius:5px; font-weight:600; }
-.badge-mom { color:#0B0F14; background:#FFB454; }
-.badge-mr  { color:#0B0F14; background:#5CC8FF; }
-.tk-sym { font-family:'Space Grotesk',sans-serif; font-weight:700;
-  font-size:3rem; line-height:1; margin:10px 0 0; }
-.tk-name { color:#8A97A5; font-size:.9rem; margin-bottom:10px; }
-.tk-px { font-family:'IBM Plex Mono',monospace; font-size:1.25rem;
+.card-head { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.chip { font-family:'IBM Plex Mono',monospace; font-size:.66rem;
+  letter-spacing:.14em; padding:4px 9px; border-radius:5px; font-weight:600;
+  display:inline-block; }
+.chip-solid { background:var(--c,#8A97A5); color:#0B0F14; }
+.chip-outline { background:transparent; border:1px solid var(--c,#8A97A5);
+  color:var(--c,#8A97A5); padding:3px 8px; }
+.chip-muted { background:#1E2935; color:#8A97A5; }
+.chip-warn { background:#E5484D; color:#0B0F14; }
+.sym { font-family:'Space Grotesk',sans-serif; font-weight:700;
+  font-size:2.6rem; line-height:1.05; margin:8px 0 0; }
+.sym-sm { font-size:2rem; }
+.sub { color:#8A97A5; font-size:.9rem; margin-bottom:8px; }
+.px-line { font-family:'IBM Plex Mono',monospace; font-size:1.2rem;
   font-weight:600; }
-.tk-chg-up { color:#FFB454; } .tk-chg-dn { color:#5CC8FF; }
+.up { color:#FFB454; } .dn { color:#5CC8FF; }
+.eyebrow { font-family:'IBM Plex Mono',monospace; font-size:.62rem;
+  letter-spacing:.14em; color:#8A97A5; margin:16px 0 4px; }
+.nm { color:#C7D2DC; opacity:.55; font-size:.86rem; margin:4px 0; }
+.nm b { opacity:1; }
 
 .lvls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
-  margin:16px 0 10px; }
+  margin:12px 0 8px; }
 .lvl { background:#0B0F14; border:1px solid #1E2935; border-radius:9px;
   padding:9px 10px; }
 .lvl .lab { font-size:.62rem; letter-spacing:.14em; color:#8A97A5;
@@ -406,18 +417,59 @@ def render_payoff(plan: dict, option: dict | None, atr: float,
 
 
 def section(label: str) -> None:
-    st.markdown(f'<div class="meta" style="margin:16px 0 2px;'
-                f'letter-spacing:.12em">{label}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="eyebrow">{label}</div>',
+                unsafe_allow_html=True)
 
 
-def status_chip(plan: dict, accent: str) -> str:
-    """TRIGGERED solid accent · STALKING outline — the entry is an anchor,
-    not wherever price happens to sit."""
+# ------------------------------------------------- component vocabulary ---
+# Every card on the page is assembled from these helpers — one visual
+# language for champion cards, detail tickets, option blocks, no-trade.
+
+def chip(label: str, color: str = MUTED, variant: str = "solid") -> str:
+    """Status chips: solid (TRIGGERED/style), outline (STALKING/LATE
+    ENTRY), muted (NO TRADE), warn (EARNINGS)."""
+    cls = {"solid": "chip chip-solid", "outline": "chip chip-outline",
+           "muted": "chip chip-muted", "warn": "chip chip-warn"}[variant]
+    style = (f' style="--c:{color}"' if variant in ("solid", "outline")
+             else "")
+    return f'<span class="{cls}"{style}>{label}</span>'
+
+
+def card_head(*chips_html: str) -> str:
+    return f'<div class="card-head">{"".join(chips_html)}</div>'
+
+
+def plan_chips(style: str, plan: dict, earnings: dict | None,
+               accent: str) -> str:
+    parts = [chip(style.upper(), accent, "solid")]
     if plan.get("status", "triggered") == "triggered":
-        return (f' <span class="badge" style="background:{accent};'
-                f'color:#0B0F14">TRIGGERED</span>')
-    return (f' <span class="badge" style="background:transparent;'
-            f'border:1px solid {accent};color:{accent}">STALKING</span>')
+        parts.append(chip("TRIGGERED", accent, "solid"))
+    else:
+        parts.append(chip("STALKING", accent, "outline"))
+    if plan.get("scale_note"):
+        parts.append(chip("LATE ENTRY", AMBER, "outline"))
+    e = earnings or {}
+    if e.get("status") == "imminent":
+        parts.append(chip(f'EARNINGS {e.get("date") or ""}'.strip(),
+                          RED, "warn"))
+    return card_head(*parts)
+
+
+def levels_html(p: dict, accent: str) -> str:
+    return (f'<div class="lvls">'
+            f'<div class="lvl"><div class="lab">ENTRY</div>'
+            f'<div class="val">${p["entry"]:,.2f}</div></div>'
+            f'<div class="lvl"><div class="lab">STOP</div>'
+            f'<div class="val val-stop">${p["stop"]:,.2f}</div></div>'
+            f'<div class="lvl"><div class="lab">TARGET</div>'
+            f'<div class="val" style="color:{accent}">${p["target"]:,.2f}'
+            f'</div></div></div>')
+
+
+def plan_meta_html(p: dict) -> str:
+    return (f'<div class="meta"><b>{p["shares"]} shares</b> ≈ '
+            f'${p["notional"]:,.0f} · risk ${p["risk_dollars"]:,.0f} at stop '
+            f'· {p["reward_risk"]}R · flat by <b>{p["time_exit"]}</b></div>')
 
 
 def quote_stale_txt(qt) -> str:
@@ -444,10 +496,9 @@ def render_detail(symbol: str) -> None:
     style = str(r["style"])
     mom = style == "momentum"
     acc = AMBER if mom else BLUE
-    badge_cls = "badge-mom" if mom else "badge-mr"
     live, prev_close = float(r["live"]), float(r["prev_close"])
     day_pct = float(r["day_pct"])
-    chg_cls = "tk-chg-up" if day_pct >= 0 else "tk-chg-dn"
+    chg_cls = "up" if day_pct >= 0 else "dn"
     rvol_txt = f'{r["rvol"]:.1f}×' if pd.notna(r["rvol"]) else "—"
 
     failed = gates.get(symbol, [])
@@ -464,33 +515,21 @@ def render_detail(symbol: str) -> None:
         option = None
     opt_html = option_block_html(symbol, option, plan, float(r["atr"]))
 
-    st.markdown(f"""
-<div class="ticket">
-  <div class="ticket-rule"></div>
-  <span class="badge {badge_cls}">{style.upper()}</span>{status_chip(plan, acc)}
-  <div class="tk-sym" style="font-size:2.2rem">{symbol}</div>
-  <div class="tk-px">${live:,.2f}
-    <span class="{chg_cls}">{day_pct:+.1%} today</span></div>
-  <div class="lvls">
-    <div class="lvl"><div class="lab">ENTRY</div>
-      <div class="val">${plan["entry"]:,.2f}</div></div>
-    <div class="lvl"><div class="lab">STOP</div>
-      <div class="val val-stop">${plan["stop"]:,.2f}</div></div>
-    <div class="lvl"><div class="lab">TARGET</div>
-      <div class="val" style="color:{acc}">${plan["target"]:,.2f}</div></div>
-  </div>
-  <div class="meta"><b>{plan["shares"]} shares</b> ≈ ${plan["notional"]:,.0f}
-     · risk ${plan["risk_dollars"]:,.0f} at stop · {plan["reward_risk"]}R
-     · flat by <b>{plan["time_exit"]}</b></div>
-  <div class="meta">{style} · score <b>{float(r["score"]):.2f}</b>
-     · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
-     · ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}
-     {quote_stale_txt(r.get("quote_time"))}</div>
-  <div class="meta">{plan["entry_note"]}</div>
-  {gate_html}
-  {opt_html}
-</div>
-""", unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card"><div class="card-rule"></div>'
+        + plan_chips(style, plan, earn_map.get(symbol), acc)
+        + f'<div class="sym sym-sm">{symbol}</div>'
+        + f'<div class="px-line">${live:,.2f} '
+        + f'<span class="{chg_cls}">{day_pct:+.1%} today</span></div>'
+        + levels_html(plan, acc)
+        + plan_meta_html(plan)
+        + f'<div class="meta">score <b>{float(r["score"]):.2f}</b> '
+        + f'· gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt} '
+        + f'· ATR {float(r["atr_pct"]):.1%} · RSI2 {float(r["rsi2"]):.0f}'
+        + f'{quote_stale_txt(r.get("quote_time"))}</div>'
+        + f'<div class="meta">{plan["entry_note"]}</div>'
+        + gate_html + opt_html + '</div>',
+        unsafe_allow_html=True)
 
     section("3-MONTH DAILY · 20/50 SMA")
     render_daily(symbol, acc)
@@ -619,24 +658,18 @@ with tab_today:
 
 def render_champion(card: dict) -> None:
     mom = card["style"] == "momentum"
-    badge_cls = "badge-mom" if mom else "badge-mr"
     accent = AMBER if mom else BLUE
-    chg_cls = "tk-chg-up" if card["day_pct"] >= 0 else "tk-chg-dn"
+    chg_cls = "up" if card["day_pct"] >= 0 else "dn"
     p = card["plan"]
     rvol_txt = f'{card["rvol"]:.1f}×' if card["rvol"] is not None else "—"
     reasons = "".join(f"<li>{r}</li>" for r in card["reasons"])
-    scale_html = (f'<div class="meta" style="color:{AMBER}">⚠ '
-                  f'{p["scale_note"]}</div>' if p.get("scale_note") else "")
-    e = card.get("earnings") or {}
-    earn_badge = ""
-    if e.get("status") == "imminent":  # only reachable with the guard off
-        earn_badge = (' <span class="badge" style="background:#E5484D;'
-                      f'color:#0B0F14">EARNINGS {e.get("date") or ""}</span>')
+    cautions = (f'<div class="meta" style="color:{AMBER}">⚠ '
+                f'{p["scale_note"]}</div>' if p.get("scale_note") else "")
     if mom and risk_off:
         spy_pct = (tape.get("SPY") or {}).get("day_pct")
-        scale_html += (f'<div class="meta" style="color:{AMBER}">⚠ tape red '
-                       f'(SPY {spy_pct:+.1%}) — momentum longs are fighting '
-                       f'the market today.</div>')
+        cautions += (f'<div class="meta" style="color:{AMBER}">⚠ tape red '
+                     f'(SPY {spy_pct:+.1%}) — momentum longs are fighting '
+                     f'the market today.</div>')
 
     try:
         o = option_for(card["symbol"], p["entry"])
@@ -644,35 +677,24 @@ def render_champion(card: dict) -> None:
         o = None
     opt_html = option_block_html(card["symbol"], o, p, card["atr"])
 
-    st.markdown(f"""
-<div class="ticket">
-  <div class="ticket-rule"></div>
-  <span class="badge {badge_cls}">{card["style"].upper()}</span>{status_chip(p, accent)}{earn_badge}
-  <div class="tk-sym">{card["symbol"]}</div>
-  <div class="tk-name">{card["name"]}</div>
-  <div class="tk-px">${card["live"]:,.2f}
-    <span class="{chg_cls}">{card["day_pct"]:+.1%} today</span></div>
-  <div class="lvls">
-    <div class="lvl"><div class="lab">ENTRY</div>
-      <div class="val">${p["entry"]:,.2f}</div></div>
-    <div class="lvl"><div class="lab">STOP</div>
-      <div class="val val-stop">${p["stop"]:,.2f}</div></div>
-    <div class="lvl"><div class="lab">TARGET</div>
-      <div class="val" style="color:{accent}">${p["target"]:,.2f}</div></div>
-  </div>
-  <div class="meta"><b>{p["shares"]} shares</b> ≈ ${p["notional"]:,.0f}
-     · risk ${p["risk_dollars"]:,.0f} at stop · {p["reward_risk"]}R
-     · flat by <b>{p["time_exit"]}</b></div>
-  <div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt}
-     · ATR {card["atr_pct"]:.1%}{quote_stale_txt(card.get("quote_time"))}</div>
-  {scale_html}
-  <div class="why"><div class="lab">WHY THIS TRADE</div>
-    <ul>{reasons}</ul>
-    <div class="meta" style="margin-top:8px">{p["entry_note"]}</div>
-  </div>
-  {opt_html}
-</div>
-""", unsafe_allow_html=True)
+    st.markdown(
+        '<div class="card"><div class="card-rule"></div>'
+        + plan_chips(card["style"], p, card.get("earnings"), accent)
+        + f'<div class="sym">{card["symbol"]}</div>'
+        + f'<div class="sub">{card["name"]}</div>'
+        + f'<div class="px-line">${card["live"]:,.2f} '
+        + f'<span class="{chg_cls}">{card["day_pct"]:+.1%} today</span></div>'
+        + levels_html(p, accent)
+        + plan_meta_html(p)
+        + f'<div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt} '
+        + f'· ATR {card["atr_pct"]:.1%}'
+        + f'{quote_stale_txt(card.get("quote_time"))}</div>'
+        + cautions
+        + f'<div class="why"><div class="lab">WHY THIS TRADE</div>'
+        + f'<ul>{reasons}</ul>'
+        + f'<div class="meta" style="margin-top:8px">{p["entry_note"]}</div>'
+        + f'</div>{opt_html}</div>',
+        unsafe_allow_html=True)
     # Charts and payoff live in the detail flow — the champion is the
     # default detail selection, so they appear right below the watchlist.
 
@@ -680,23 +702,21 @@ def render_champion(card: dict) -> None:
 def render_style_no_trade(sc: dict) -> None:
     """Explicit per-style skip — near misses with the gate each failed."""
     style = sc["style"]
-    mom = style == "momentum"
-    badge_cls = "badge-mom" if mom else "badge-mr"
+    accent = AMBER if style == "momentum" else BLUE
     rows = "".join(
-        f'<li><b>{m["symbol"]}</b> (score {m["score"]:.2f}) '
-        f'— {", ".join(m["failed"])}</li>' for m in sc.get("near_misses", []))
-    st.markdown(f"""
-<div class="ticket">
-  <div class="ticket-rule"></div>
-  <span class="badge {badge_cls}" style="opacity:.55">{style.upper()}</span>
-  <span class="badge" style="background:#1E2935;color:#8A97A5">NO TRADE</span>
-  <div class="tk-sym" style="font-size:1.7rem">Nothing qualified</div>
-  <div class="tk-name">No {style} name cleared the gates — skipping is a
-  position.</div>
-  <div class="why"><div class="lab">NEAR MISSES · FAILED GATES</div>
-    <ul>{rows}</ul></div>
-</div>
-""", unsafe_allow_html=True)
+        f'<div class="nm"><b>{m["symbol"]}</b> (score {m["score"]:.2f}) '
+        f'— {", ".join(m["failed"])}</div>'
+        for m in sc.get("near_misses", []))
+    st.markdown(
+        '<div class="card"><div class="card-rule"></div>'
+        + card_head(chip(style.upper(), accent, "outline"),
+                    chip("NO TRADE", variant="muted"))
+        + '<div class="sym sym-sm">Nothing qualified</div>'
+        + f'<div class="sub">No {style} name cleared the gates — skipping '
+        + 'is a position.</div>'
+        + '<div class="why"><div class="lab">NEAR MISSES · FAILED GATES</div>'
+        + rows + '</div></div>',
+        unsafe_allow_html=True)
 
 
 # Two equal cards — the top pick of EACH style, momentum first.
