@@ -322,6 +322,19 @@ def todays_why() -> dict:
 
 
 @st.cache_data(ttl=600, show_spinner=False)
+def load_positions() -> dict:
+    """Open-position book written by the nightly workflow (each commit
+    redeploys the app, so the file is always local)."""
+    try:
+        p = Path(__file__).parent / "journal" / "positions.json"
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {"open": [], "closed": [], "skipped": [], "deployed": 0}
+
+
+@st.cache_data(ttl=600, show_spinner=False)
 def load_journal() -> list[dict]:
     """Read journal/ (committed by the GitHub Actions workflows; each
     commit redeploys the app, so the files are always local)."""

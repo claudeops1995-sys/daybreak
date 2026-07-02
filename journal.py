@@ -35,6 +35,7 @@ SCHEMA_VERSION = 1
 # ET gates for cron runs (manual --force bypasses them).
 PRELIM_WINDOW = (dtime(9, 32), dtime(9, 43))
 OFFICIAL_WINDOW = (dtime(9, 44), dtime(10, 15))
+NOTIFY_WINDOW = (dtime(9, 44), dtime(10, 25))
 SCORE_WINDOW = (dtime(20, 0), dtime(23, 30))
 
 
@@ -353,11 +354,320 @@ def _score_card(sc: dict, d, ex_t: dtime) -> dict:
     return out
 
 
+# -------------------------------------------------------- open positions ---
+# MR is a swing trade now: positions live in journal/positions.json and
+# the nightly job walks each one forward — stop / RSI-strength exit /
+# day-cap — and writes tomorrow's instruction for the morning alert.
+
+def _positions_path(outdir: Path, prefix: str) -> Path:
+    return outdir / f"{prefix}positions.json"
+
+
+def _load_positions(outdir: Path, prefix: str) -> dict:
+    p = _positions_path(outdir, prefix)
+    if p.exists():
+        try:
+            return json.loads(p.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"open": [], "closed": [], "skipped": [], "paper_mom": []}
+
+
+def _save_positions(outdir: Path, prefix: str, book: dict) -> None:
+    outdir.mkdir(parents=True, exist_ok=True)
+    _positions_path(outdir, prefix).write_text(
+        json.dumps(book, indent=1, default=str), encoding="utf-8")
+
+
+def _daily(symbol: str) -> pd.DataFrame:
+    df = yf.download([symbol], period="3mo", interval="1d",
+                     group_by="ticker", auto_adjust=True, progress=False)
+    return df[symbol].dropna()
+
+
+def _update_position(pos: dict, d) -> dict | None:
+    """Walk one open position through today's daily bar. Returns a closed
+    record (to move to `closed`) or None if it stays open."""
+    bars = _daily(pos["symbol"])
+    if bars.empty:
+        pos["note"] = "no bars — unchanged"
+        return None
+    if bars.index[-1].date() != d:
+        # No bar for today (holiday / run after midnight): mark to the
+        # latest bar but run no exit logic — that fires on trade days.
+        c = float(bars["Close"].iloc[-1])
+        pos["last_close"] = round(c, 2)
+        pos["pnl"] = round(int(pos["shares"]) * (c - pos["entry"]), 0)
+        held = [ts for ts in bars.index if ts.date()
+                >= datetime.fromisoformat(pos["opened"]).date()]
+        pos["days_held"] = len(held)
+        rsi2 = engine._rsi_last(bars["Close"], 2)
+        pos["rsi2"] = round(float(rsi2), 1) if pd.notna(rsi2) else None
+        pos["note"] = f"marked as of {bars.index[-1].date().isoformat()}"
+        return None
+    pos.pop("note", None)
+    row = bars.iloc[-1]
+    o, lo, c = float(row["Open"]), float(row["Low"]), float(row["Close"])
+    stop, entry, shares = pos["stop"], pos["entry"], int(pos["shares"])
+    held = [ts for ts in bars.index
+            if ts.date() >= datetime.fromisoformat(pos["opened"]).date()]
+    pos["days_held"] = len(held)
+    pos["last_close"] = round(c, 2)
+    pos["pnl"] = round(shares * (c - entry), 0)
+
+    def close(px: float, reason: str) -> dict:
+        return {**pos, "exit": round(px, 2), "exit_date": d.isoformat(),
+                "exit_reason": reason,
+                "pnl": round(shares * (px - entry), 0)}
+
+    # 1) stop logic first — a gap below the stop fills at the open price.
+    if o < stop:
+        return close(o, "stopped_gap")
+    if lo <= stop:
+        return close(stop, "stopped")
+    # 2) a pending exit set last night executes at today's close.
+    if pos.get("pending_exit"):
+        return close(c, pos.get("pending_reason", "rsi_exit"))
+    # 3) otherwise: tonight's RSI(2) decides tomorrow's instruction.
+    rsi2 = engine._rsi_last(bars["Close"], 2)
+    pos["rsi2"] = round(float(rsi2), 1) if pd.notna(rsi2) else None
+    if pos["rsi2"] is not None and pos["rsi2"] > pos.get("exit_rsi", 65.0):
+        pos["pending_exit"] = True
+        pos["pending_reason"] = "rsi_exit"
+        pos["instruction"] = "SELL AT CLOSE — strength returned"
+    elif pos["days_held"] >= pos.get("max_days", 10):
+        pos["pending_exit"] = True
+        pos["pending_reason"] = "day10"
+        pos["instruction"] = f"DAY-{pos.get('max_days', 10)} SELL — time cap"
+    else:
+        pos["instruction"] = f"HOLD — day {pos['days_held']}"
+    return None
+
+
+def _try_open_from_official(book: dict, rec: dict, d) -> None:
+    """Open today's MR signal if its limit filled and we're under the
+    concurrent-position cap."""
+    sc = (rec.get("style_cards") or {}).get("mean-reversion") or {}
+    if sc.get("no_trade") or not sc.get("symbol"):
+        return
+    sym, plan = sc["symbol"], sc.get("plan", {})
+    settings = rec.get("settings", {})
+    if any(p["symbol"] == sym for p in book["open"]):
+        book["skipped"].append({"date": d.isoformat(), "symbol": sym,
+                                "reason": "already held"})
+        return
+    cap = int(settings.get("mr_max_open", 5))
+    if len(book["open"]) >= cap:
+        book["skipped"].append({"date": d.isoformat(), "symbol": sym,
+                                "reason": "signal only — at capacity"})
+        return
+    try:
+        bars = _daily(sym)
+        if bars.empty or bars.index[-1].date() != d:
+            return
+        row = bars.iloc[-1]
+        entry = float(plan["entry"])
+        if float(row["Low"]) > entry:
+            book["skipped"].append({"date": d.isoformat(), "symbol": sym,
+                                    "reason": "limit not touched"})
+            return
+        # A gap-down open below the limit fills at the (better) open.
+        fill = min(entry, float(row["Open"]))
+        pos = {
+            "symbol": sym, "style": "mean-reversion",
+            "entry": round(fill, 2), "stop": float(plan["stop"]),
+            "shares": int(plan["shares"]),
+            "notional": round(int(plan["shares"]) * fill, 0),
+            "opened": d.isoformat(),
+            "exit_rsi": float(settings.get("mr_exit_rsi", 65.0)),
+            "max_days": int(settings.get("mr_max_days", 10)),
+            "pending_exit": False, "instruction": "HOLD — day 1",
+        }
+        closed = _update_position(pos, d)  # same-day stop is possible
+        if closed is not None:
+            book["closed"].append(closed)
+        else:
+            book["open"].append(pos)
+    except Exception as e:
+        book["skipped"].append({"date": d.isoformat(), "symbol": sym,
+                                "reason": f"fill check failed: {e}"})
+
+
+def _paper_grade_momentum(book: dict, rec: dict, d) -> None:
+    """Data-only: paper-grade momentum as a 2–3 day hold nightly (the
+    flipped-positive variant is being graded, not traded)."""
+    try:
+        papers = book.setdefault("paper_mom", [])
+        sc = (rec.get("style_cards") or {}).get("momentum") or {}
+        if sc.get("symbol") and not sc.get("no_trade"):
+            if not any(p["date"] == d.isoformat() for p in papers):
+                papers.append({"date": d.isoformat(), "symbol": sc["symbol"],
+                               "entry": float(sc["plan"]["entry"]),
+                               "closes": []})
+        for p in papers:
+            if len(p["closes"]) >= 3:
+                continue
+            bars = _daily(p["symbol"])
+            if bars.empty or bars.index[-1].date() != d:
+                continue
+            opened = datetime.fromisoformat(p["date"]).date()
+            if d > opened and (not p["closes"]
+                               or p["closes"][-1]["date"] != d.isoformat()):
+                c = float(bars["Close"].iloc[-1])
+                p["closes"].append({
+                    "date": d.isoformat(), "close": round(c, 2),
+                    "pnl_pct": round(c / p["entry"] - 1, 4)})
+        del papers[:-30]  # keep the last 30 records
+    except Exception:
+        pass
+
+
+def positions(force: bool, prefix: str, outdir: Path,
+              seed_test: str | None = None) -> int:
+    now = engine.now_et()
+    d = now.date()
+    if not force and not in_window(now.time(), SCORE_WINDOW):
+        log(f"outside positions window ({now:%H:%M} ET) — skipping")
+        return 0
+    book = _load_positions(outdir, prefix)
+
+    if seed_test:
+        # Pipeline test: fabricate an already-open position two sessions
+        # back so the updater exercises the full path.
+        try:
+            bars = _daily(seed_test)
+            if len(bars) >= 3:
+                entry = float(bars["Close"].iloc[-3])
+                book["open"].append({
+                    "symbol": seed_test, "style": "mean-reversion",
+                    "entry": round(entry, 2),
+                    "stop": round(entry * 0.92, 2),
+                    "shares": int(5000 // entry),
+                    "notional": round(int(5000 // entry) * entry, 0),
+                    "opened": bars.index[-3].date().isoformat(),
+                    "exit_rsi": 65.0, "max_days": 10,
+                    "pending_exit": False, "instruction": "HOLD",
+                    "seeded_test": True,
+                })
+                log(f"seeded test position: {seed_test} @ {entry:.2f}")
+        except Exception as e:
+            log(f"seed failed: {e}")
+
+    still_open = []
+    for pos in book["open"]:
+        try:
+            closed = _update_position(pos, d)
+        except Exception as e:
+            pos["note"] = f"update failed: {e}"
+            closed = None
+        if closed is not None:
+            book["closed"].append(closed)
+            log(f"closed {closed['symbol']} — {closed['exit_reason']} "
+                f"{closed['pnl']:+,.0f}")
+        else:
+            still_open.append(pos)
+    book["open"] = still_open
+
+    official = outdir / d.isoformat() / f"{prefix}official.json"
+    if official.exists():
+        try:
+            rec = json.loads(official.read_text(encoding="utf-8"))
+            if "error" not in rec:
+                _try_open_from_official(book, rec, d)
+                _paper_grade_momentum(book, rec, d)
+        except Exception as e:
+            log(f"official processing failed: {e}")
+
+    book["deployed"] = round(sum(p.get("notional", 0)
+                                 for p in book["open"]), 0)
+    book["updated_at_et"] = now.isoformat()
+    _save_positions(outdir, prefix, book)
+    log(f"positions: {len(book['open'])} open, deployed "
+        f"${book['deployed']:,.0f}")
+    return 0
+
+
+# ------------------------------------------------------------------ notify ---
+
+def notify(force: bool, prefix: str, outdir: Path) -> int:
+    """Morning push: actions first, then new signals, then deployment."""
+    now = engine.now_et()
+    d = now.date()
+    if not force:
+        if now.weekday() >= 5:
+            log("weekend — skipping notify")
+            return 0
+        if not in_window(now.time(), NOTIFY_WINDOW):
+            log(f"outside notify window ({now:%H:%M} ET) — skipping")
+            return 0
+    book = _load_positions(outdir, prefix)
+    if book.get("last_notified") == d.isoformat() and not force:
+        log("already notified today — skipping")
+        return 0
+
+    actions, holds = [], []
+    for p in book["open"]:
+        line = (f'{p["symbol"]}: {p.get("instruction", "HOLD")} '
+                f'({p.get("pnl", 0):+,.0f})')
+        (actions if p.get("pending_exit") else holds).append(line)
+    for c in book.get("closed", [])[-4:]:
+        if c.get("exit_date") and (d - datetime.fromisoformat(
+                c["exit_date"]).date()).days <= 1:
+            actions.append(f'{c["symbol"]}: STOPPED at {c["exit"]} '
+                           f'({c["pnl"]:+,.0f})')
+
+    signals = []
+    official = outdir / d.isoformat() / f"{prefix}official.json"
+    if official.exists():
+        try:
+            rec = json.loads(official.read_text(encoding="utf-8"))
+            for style, sc in (rec.get("style_cards") or {}).items():
+                if sc.get("no_trade"):
+                    signals.append(f"{style}: no trade")
+                    continue
+                plan = sc.get("plan", {})
+                if plan.get("kind") == "swing":
+                    signals.append(
+                        f'NEW BUY: {plan.get("shares")} {sc["symbol"]} '
+                        f'limit {plan.get("entry")} · stop '
+                        f'{plan.get("stop")}')
+                else:
+                    signals.append(
+                        f'DAY TRADE: {sc["symbol"]} '
+                        f'{plan.get("entry_note", "")[:60]}')
+        except Exception:
+            pass
+
+    lines = []
+    if actions:
+        lines.append("ACTION TODAY:")
+        lines += [f"• {a}" for a in actions]
+    if holds:
+        lines += [f"• {h}" for h in holds]
+    if signals:
+        lines.append("SIGNALS:")
+        lines += [f"• {s}" for s in signals]
+    if not lines:
+        lines = ["No actions — no open positions, nothing new qualified."]
+    lines.append(f'Deployed: ${book.get("deployed", 0):,.0f} in '
+                 f'{len(book["open"])} open position'
+                 + ("s" if len(book["open"]) != 1 else ""))
+    msg = "\n".join(lines)
+    sent = ds.ntfy_send(f"DAYBREAK — {d.strftime('%a %b %d')}", msg,
+                        priority="high" if actions else "default")
+    log(f"ntfy sent: {sent}\n{msg}")
+    if sent:
+        book["last_notified"] = d.isoformat()
+        _save_positions(outdir, prefix, book)
+    return 0
+
+
 # ------------------------------------------------------------------- main ---
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("command", choices=["capture", "score"])
+    ap.add_argument("command",
+                    choices=["capture", "score", "positions", "notify"])
     ap.add_argument("--stage", default="auto",
                     choices=["auto", "prelim", "official"])
     ap.add_argument("--force", action="store_true",
@@ -365,12 +675,19 @@ def main() -> int:
     ap.add_argument("--prefix", default="",
                     help="filename prefix (dryrun- for pipeline tests; "
                          "the app ignores prefixed files)")
+    ap.add_argument("--seed-test", default=None,
+                    help="positions only: fabricate an open test position "
+                         "for SYMBOL before updating (pipeline dry-runs)")
     ap.add_argument("--outdir", default=str(Path(__file__).parent / "journal"))
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
     if args.command == "capture":
         return capture(args.stage, args.force, args.prefix, outdir)
+    if args.command == "positions":
+        return positions(args.force, args.prefix, outdir, args.seed_test)
+    if args.command == "notify":
+        return notify(args.force, args.prefix, outdir)
     return score(args.force, args.prefix, outdir)
 
 

@@ -23,6 +23,10 @@ on:
         description: "Write dryrun- prefixed files (ignored by the app)"
         type: boolean
         default: false
+      notify_test:
+        description: "Also force a ntfy morning alert"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -62,6 +66,15 @@ jobs:
           [ "$FORCE" = "true" ] && ARGS="$ARGS --force"
           [ "$DRY" = "true" ] && ARGS="$ARGS --prefix dryrun-"
           echo "journal.py $ARGS"
+          python journal.py $ARGS
+      - name: Morning alert (ntfy)
+        env:
+          FORCE: ${{ inputs.notify_test }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          ARGS="notify"
+          [ "$FORCE" = "true" ] && ARGS="$ARGS --force"
+          [ "$DRY" = "true" ] && ARGS="$ARGS --prefix dryrun-"
           python journal.py $ARGS
       - name: Commit journal
         run: |

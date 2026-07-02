@@ -17,6 +17,10 @@ on:
         description: "Score dryrun- prefixed files (ignored by the app)"
         type: boolean
         default: false
+      seed_test:
+        description: "Seed a fake open position (symbol) through the updater"
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -55,6 +59,17 @@ jobs:
           [ "$FORCE" = "true" ] && ARGS="$ARGS --force"
           [ "$DRY" = "true" ] && ARGS="$ARGS --prefix dryrun-"
           echo "journal.py $ARGS"
+          python journal.py $ARGS
+      - name: Update open positions
+        env:
+          FORCE: ${{ inputs.force }}
+          DRY: ${{ inputs.dry_run }}
+          SEED: ${{ inputs.seed_test }}
+        run: |
+          ARGS="positions"
+          [ "$FORCE" = "true" ] && ARGS="$ARGS --force"
+          [ "$DRY" = "true" ] && ARGS="$ARGS --prefix dryrun-"
+          [ -n "$SEED" ] && ARGS="$ARGS --seed-test $SEED"
           python journal.py $ARGS
       - name: Commit outcomes
         run: |
