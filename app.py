@@ -562,17 +562,25 @@ plans = res.get("plans", {})
 gates = res.get("gates", {})
 earn_map = res.get("earnings", {})
 
-st.markdown(
-    f'<span class="db-pill">{PHASE_LABEL[res["phase"]]}</span>&nbsp;'
-    f'<span class="db-pill">{res["asof"]}</span>',
-    unsafe_allow_html=True,
-)
-
-# ------------------------------------------------------------- tape strip ---
+# --------------------------------------------------------------------- IA ---
+# Three tabs; TODAY's vertical rhythm is tape → dual champions → watchlist
+# → detail. The glance strip answers "tape / two trades / do they qualify"
+# before any scrolling.
 
 tape = cached_tape()
 risk_off = ((tape.get("SPY") or {}).get("day_pct") or 0) < -0.01
-if tape:
+
+tab_today, tab_journal, tab_settings = st.tabs(
+    ["TODAY", "JOURNAL", "SETTINGS"])
+
+with tab_today:
+    st.markdown(
+        f'<span class="db-pill">{PHASE_LABEL[res["phase"]]}</span>&nbsp;'
+        f'<span class="db-pill">{res["asof"]}</span>',
+        unsafe_allow_html=True,
+    )
+
+    # tape strip
     chips = []
     for k in ("SPY", "QQQ", "VIX"):
         t = tape.get(k)
@@ -586,6 +594,25 @@ if tape:
                          f'{t["day_pct"]:+.1%}</span></span>')
     if chips:
         st.markdown('<div style="margin-top:6px">' + "&nbsp;".join(chips)
+                    + "</div>", unsafe_allow_html=True)
+
+    # glance strip — the two trades in one line
+    glance = []
+    for _style in STYLES:
+        _sc = res["style_cards"].get(_style) or {}
+        dot = AMBER if _style == "momentum" else BLUE
+        if _sc.get("no_trade"):
+            glance.append(f'<span class="db-pill" style="opacity:.6">'
+                          f'<span class="dot" style="background:{dot}"></span>'
+                          f'no trade</span>')
+        else:
+            _p = _sc.get("plan", {})
+            glance.append(f'<span class="db-pill">'
+                          f'<span class="dot" style="background:{dot}"></span>'
+                          f'{_sc["symbol"]} · {_p.get("status", "—")} · '
+                          f'{_p.get("reward_risk", "—")}R</span>')
+    if glance:
+        st.markdown('<div style="margin-top:6px">' + "&nbsp;".join(glance)
                     + "</div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------ trade ticket ---
@@ -646,11 +673,8 @@ def render_champion(card: dict) -> None:
   {opt_html}
 </div>
 """, unsafe_allow_html=True)
-
-    section(f'{card["symbol"]} · TODAY · 5-MIN')
-    render_intraday(card["symbol"], p, accent, card["prev_close"], card["live"])
-    section(f'{card["symbol"]} · PROJECTED SAME-DAY PAYOFF')
-    render_payoff(p, o, card["atr"], accent)
+    # Charts and payoff live in the detail flow — the champion is the
+    # default detail selection, so they appear right below the watchlist.
 
 
 def render_style_no_trade(sc: dict) -> None:
@@ -676,59 +700,63 @@ def render_style_no_trade(sc: dict) -> None:
 
 
 # Two equal cards — the top pick of EACH style, momentum first.
-for _style in STYLES:
-    _sc = res["style_cards"].get(_style)
-    if _sc is None:
-        continue
-    if _sc.get("no_trade"):
-        render_style_no_trade(_sc)
-    else:
-        _sc["name"] = name_for(_sc["symbol"])
-        render_champion(_sc)
+with tab_today:
+    for _style in STYLES:
+        _sc = res["style_cards"].get(_style)
+        if _sc is None:
+            continue
+        if _sc.get("no_trade"):
+            render_style_no_trade(_sc)
+        else:
+            _sc["name"] = name_for(_sc["symbol"])
+            render_champion(_sc)
 
-# --------------------------------------------------------------- watchlist ---
-
-st.markdown("##### Ranked watchlist")
-rows = []
-for sym, r in wl.iterrows():
-    dot = AMBER if r["style"] == "momentum" else BLUE
-    failed = gates.get(str(sym), [])
-    dim = ' style="opacity:.45"' if failed else ""
-    e_mark = ("<sup style=\"color:#E5484D\">E</sup>"
-              if (earn_map.get(str(sym)) or {}).get("status") == "imminent"
-              else "")
-    rows.append(
-        f'<tr{dim}><td><span class="dot" style="background:{dot}"></span>'
-        f'{sym}{e_mark}</td>'
-        f'<td>{r["score"]:.2f}</td><td>${r["live"]:,.2f}</td>'
-        f'<td>{r["day_pct"]:+.1%}</td>'
-        f'<td>{(f"{r.rvol:.1f}×" if pd.notna(r.rvol) else "—")}</td>'
-        f'<td>{r["atr_pct"]:.1%}</td><td>{r["rsi2"]:.0f}</td></tr>'
+with tab_today:
+    st.markdown("##### Ranked watchlist")
+    rows = []
+    for sym, r in wl.iterrows():
+        dot = AMBER if r["style"] == "momentum" else BLUE
+        failed = gates.get(str(sym), [])
+        dim = ' style="opacity:.45"' if failed else ""
+        e_mark = ("<sup style=\"color:#E5484D\">E</sup>"
+                  if (earn_map.get(str(sym)) or {}).get("status") == "imminent"
+                  else "")
+        rows.append(
+            f'<tr{dim}><td><span class="dot" style="background:{dot}"></span>'
+            f'{sym}{e_mark}</td>'
+            f'<td>{r["score"]:.2f}</td><td>${r["live"]:,.2f}</td>'
+            f'<td>{r["day_pct"]:+.1%}</td>'
+            f'<td>{(f"{r.rvol:.1f}×" if pd.notna(r.rvol) else "—")}</td>'
+            f'<td>{r["atr_pct"]:.1%}</td><td>{r["rsi2"]:.0f}</td></tr>'
+        )
+    st.markdown(
+        '<table class="wl"><tr><th>SYMBOL</th><th>SCORE</th><th>LAST</th>'
+        '<th>DAY</th><th>RVOL</th><th>ATR</th><th>RSI2</th></tr>'
+        + "".join(rows) + "</table>",
+        unsafe_allow_html=True,
     )
-st.markdown(
-    '<table class="wl"><tr><th>SYMBOL</th><th>SCORE</th><th>LAST</th>'
-    '<th>DAY</th><th>RVOL</th><th>ATR</th><th>RSI2</th></tr>'
-    + "".join(rows) + "</table>",
-    unsafe_allow_html=True,
-)
-st.markdown(
-    f'<div class="meta" style="margin-top:8px">'
-    f'<span class="dot" style="background:{AMBER}"></span>momentum&nbsp;&nbsp;'
-    f'<span class="dot" style="background:{BLUE}"></span>mean-reversion'
-    f'&nbsp;&nbsp;· dimmed = failed a gate'
-    f'&nbsp;&nbsp;· <sup style="color:#E5484D">E</sup> = earnings ≤1 day</div>',
-    unsafe_allow_html=True,
-)
+    st.markdown(
+        f'<div class="meta" style="margin-top:8px">'
+        f'<span class="dot" style="background:{AMBER}"></span>momentum&nbsp;&nbsp;'
+        f'<span class="dot" style="background:{BLUE}"></span>mean-reversion'
+        f'&nbsp;&nbsp;· dimmed = failed a gate'
+        f'&nbsp;&nbsp;· <sup style="color:#E5484D">E</sup> = earnings ≤1 day</div>',
+        unsafe_allow_html=True,
+    )
 
-# ------------------------------------------------------------ detail view ---
-
-st.markdown("##### Inspect a symbol")
-choice = st.selectbox(
-    "watchlist detail", ["—"] + list(wl.index), index=0,
-    key="detail_sym", label_visibility="collapsed",
-)
-if choice and choice != "—":
-    render_detail(choice)
+    # detail — defaults to the overall champion so its charts/payoff show
+    # right below the list without a tap.
+    st.markdown("##### Inspect a symbol")
+    opts = ["—"] + [str(s) for s in wl.index]
+    default_idx = 0
+    if card is not None and str(card["symbol"]) in opts:
+        default_idx = opts.index(str(card["symbol"]))
+    choice = st.selectbox(
+        "watchlist detail", opts, index=default_idx,
+        key="detail_sym", label_visibility="collapsed",
+    )
+    if choice and choice != "—":
+        render_detail(choice)
 
 # ----------------------------------------------------------------- journal ---
 
@@ -806,13 +834,13 @@ def render_journal() -> None:
                     unsafe_allow_html=True)
 
 
-st.markdown("##### Journal")
-with st.expander("Frozen decision points & outcomes"):
+with tab_journal:
+    st.markdown("##### Frozen decision points & outcomes")
     render_journal()
 
 # ---------------------------------------------------------------- settings ---
 
-with st.expander("Settings"):
+with tab_settings:
     st.checkbox(
         "Risk-budget sizing (shares = risk $ ÷ stop distance, "
         "still capped at $5,000 notional)",
@@ -842,18 +870,16 @@ with st.expander("Settings"):
     st.number_input("Nomination floor R:R", min_value=0.5, max_value=3.0,
                     value=1.2, step=0.1, key="set_min_rr")
 
-# ------------------------------------------------------------- diagnostics ---
-
-with st.expander("Scan diagnostics"):
-    q = diag["quarantined"]
-    st.markdown(
-        f"- Universe: **{diag['universe']}** ({diag['source']})\n"
-        f"- Passed liquidity/price filters: **{diag['passed_filters']}**\n"
-        f"- Carried to live scoring: **{diag['stage2']}**\n"
-        f"- Quarantined for split-adjustment mismatch: "
-        f"**{', '.join(q) if q else 'none'}**\n"
-        f"- Scan time: **{diag['elapsed_s']}s** · phase: {diag['phase']}"
-    )
+    with st.expander("Scan diagnostics"):
+        q = diag["quarantined"]
+        st.markdown(
+            f"- Universe: **{diag['universe']}** ({diag['source']})\n"
+            f"- Passed liquidity/price filters: **{diag['passed_filters']}**\n"
+            f"- Carried to live scoring: **{diag['stage2']}**\n"
+            f"- Quarantined for split-adjustment mismatch: "
+            f"**{', '.join(q) if q else 'none'}**\n"
+            f"- Scan time: **{diag['elapsed_s']}s** · phase: {diag['phase']}"
+        )
 
 st.markdown(
     '<div class="foot">Algorithmic screen output for the operator\'s own '

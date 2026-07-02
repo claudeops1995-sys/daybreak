@@ -938,11 +938,17 @@ def build_output(scan: dict, settings: dict | None = None,
     wl_cols = ["style", "score", "live", "prev_close", "day_pct", "gap_pct",
                "rvol", "atr_pct", "rsi2", "atr", "prev_low", "quote_time"]
     # Guaranteed per-style slots — a hot momentum day can't crowd the
-    # mean-reversion alternatives out of the list.
+    # mean-reversion alternatives out of the list. The style champion is
+    # force-included so the detail view always covers it.
     wl_idx = []
     for style in STYLES:
-        wl_idx += list(ranked[ranked["style"] == style]
-                       .head(CONFIG["watchlist_per_style"]).index)
+        sub_idx = [str(i) for i in ranked[ranked["style"] == style]
+                   .head(CONFIG["watchlist_per_style"]).index]
+        sc = style_cards.get(style, {})
+        champ_sym = None if sc.get("no_trade") else sc.get("symbol")
+        if champ_sym and champ_sym not in sub_idx:
+            sub_idx = [champ_sym] + sub_idx[:CONFIG["watchlist_per_style"] - 1]
+        wl_idx += sub_idx
     watchlist = (ranked.loc[wl_idx][wl_cols]
                  .sort_values("score", ascending=False).copy())
     watchlist.index.name = "symbol"
