@@ -14,7 +14,8 @@ import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
 
-from engine import run_scan, pick_option, bs_call_price
+from engine import (DEFAULT_SETTINGS, bs_call_price, build_output,
+                    option_exit_value, pick_option, scan_market)
 
 st.set_page_config(
     page_title="DAYBREAK — Trade of the Day",
@@ -116,7 +117,17 @@ st.markdown(CSS, unsafe_allow_html=True)
 
 @st.cache_data(ttl=600, show_spinner=False)
 def cached_scan() -> dict:
-    return run_scan()
+    # Expensive, settings-independent half only — build_output() derives
+    # plans/cards from this per rerun so Settings changes are instant.
+    return scan_market()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def name_for(symbol: str) -> str:
+    try:
+        return yf.Ticker(symbol).info.get("shortName") or symbol
+    except Exception:
+        return symbol
 
 
 @st.cache_data(ttl=600, show_spinner=False)
@@ -139,10 +150,22 @@ def option_for(symbol: str, ref: float) -> dict | None:
     return pick_option(symbol, ref)
 
 
-def option_block_html(symbol: str, o: dict | None) -> str:
+def option_block_html(symbol: str, o: dict | None,
+                      plan: dict | None = None,
+                      atr: float | None = None) -> str:
     """Render an option play as HTML — shared by champion card and details."""
     if o and "contract" in o:
         flags = " · ".join(o["flags"]) if o["flags"] else ""
+        risk_line = f'<div class="line">max loss ${o["cost"]:,.0f} (full premium)'
+        if plan is not None:
+            try:
+                fb_iv = ((atr / plan["entry"]) * math.sqrt(252)
+                         if atr and plan["entry"] else None)
+                stop_pnl = option_exit_value(o, plan["stop"], fb_iv) - o["cost"]
+                risk_line += f' · at stock stop {stop_pnl:+,.0f}'
+            except Exception:
+                pass
+        risk_line += "</div>"
         return (
             f'<div class="opt"><div class="lab">OPTION ALTERNATIVE</div>'
             f'<div class="line">{o["contracts"]}× {symbol} '
@@ -151,7 +174,7 @@ def option_block_html(symbol: str, o: dict | None) -> str:
             f'<div class="line">breakeven ${o["breakeven"]:.2f} · '
             f'{o["dte"]} DTE · OI '
             + (f'{o["open_interest"]:,}' if o["open_interest"] is not None else "—")
-            + "</div>"
+            + "</div>" + risk_line
             + (f'<div class="flags">⚠ {flags}</div>' if flags else "")
             + "</div>"
         )
@@ -355,7 +378,7 @@ def render_detail(symbol: str) -> None:
         option = option_for(symbol, plan["entry"])
     except Exception:
         option = None
-    opt_html = option_block_html(symbol, option)
+    opt_html = option_block_html(symbol, option, plan, float(r["atr"]))
 
     st.markdown(f"""
 <div class="ticket">
@@ -373,7 +396,7 @@ def render_detail(symbol: str) -> None:
       <div class="val" style="color:{acc}">${plan["target"]:,.2f}</div></div>
   </div>
   <div class="meta"><b>{plan["shares"]} shares</b> ≈ ${plan["notional"]:,.0f}
-     · risk ${plan["risk_dollars"]:,.0f} · {plan["reward_risk"]}R
+     · risk ${plan["risk_dollars"]:,.0f} at stop · {plan["reward_risk"]}R
      · flat by <b>{plan["time_exit"]}</b></div>
   <div class="meta">{style} · score <b>{float(r["score"]):.2f}</b>
      · gap {float(r["gap_pct"]):+.1%} · rvol {rvol_txt}
@@ -389,6 +412,18 @@ def render_detail(symbol: str) -> None:
     section("PROJECTED SAME-DAY PAYOFF")
     render_payoff(plan, option, float(r["atr"]), acc)
 
+
+# --------------------------------------------------------------- settings ---
+# Widgets render further down (Settings expander); values are read here from
+# session_state so the whole page derives from them on every rerun.
+
+SETTINGS = {
+    **DEFAULT_SETTINGS,
+    "risk_sizing": bool(st.session_state.get("set_risk_sizing",
+                                             DEFAULT_SETTINGS["risk_sizing"])),
+    "risk_budget": float(st.session_state.get("set_risk_budget",
+                                              DEFAULT_SETTINGS["risk_budget"])),
+}
 
 # ----------------------------------------------------------------- header ---
 
@@ -412,12 +447,15 @@ with st.spinner("Scanning the S&P 500 — first load takes about a minute…"):
         # never to a raw Streamlit exception page.
         res = {"error": "Scan failed — data source unreachable or rate-limited."}
 
+res = build_output(res, SETTINGS)  # cheap derivation — reruns are instant
+
 if "error" in res:
     st.error(res["error"] + " Tap Rescan to try again.")
     st.stop()
 
 card, wl, diag = res["card"], res["watchlist"], res["diag"]
 plans = res.get("plans", {})
+card["name"] = name_for(card["symbol"])
 
 st.markdown(
     f'<span class="db-pill">{card["phase_label"]}</span>&nbsp;'
@@ -435,8 +473,11 @@ p = card["plan"]
 rvol_txt = f'{card["rvol"]:.1f}×' if card["rvol"] is not None else "—"
 reasons = "".join(f"<li>{r}</li>" for r in card["reasons"])
 
-o = card.get("option")
-opt_html = option_block_html(card["symbol"], o)
+try:
+    o = option_for(card["symbol"], p["entry"])
+except Exception:
+    o = None
+opt_html = option_block_html(card["symbol"], o, p, card["atr"])
 
 st.markdown(f"""
 <div class="ticket">
@@ -455,7 +496,7 @@ st.markdown(f"""
       <div class="val" style="color:{accent}">${p["target"]:,.2f}</div></div>
   </div>
   <div class="meta"><b>{p["shares"]} shares</b> ≈ ${p["notional"]:,.0f}
-     · risk ${p["risk_dollars"]:,.0f} · {p["reward_risk"]}R
+     · risk ${p["risk_dollars"]:,.0f} at stop · {p["reward_risk"]}R
      · flat by <b>{p["time_exit"]}</b></div>
   <div class="meta">gap {card["gap_pct"]:+.1%} · rvol {rvol_txt}
      · ATR {card["atr_pct"]:.1%}</div>
@@ -509,6 +550,19 @@ choice = st.selectbox(
 )
 if choice and choice != "—":
     render_detail(choice)
+
+# ---------------------------------------------------------------- settings ---
+
+with st.expander("Settings"):
+    st.checkbox(
+        "Risk-budget sizing (shares = risk $ ÷ stop distance, "
+        "still capped at $5,000 notional)",
+        value=DEFAULT_SETTINGS["risk_sizing"], key="set_risk_sizing",
+    )
+    st.number_input(
+        "Risk budget per trade ($)", min_value=10.0, max_value=1000.0,
+        value=DEFAULT_SETTINGS["risk_budget"], step=5.0, key="set_risk_budget",
+    )
 
 # ------------------------------------------------------------- diagnostics ---
 

@@ -32,7 +32,8 @@ import yfinance as yf
 ET = ZoneInfo("America/New_York")
 
 CONFIG = {
-    "max_notional": 5000.0,     # hard cap per position, stock or option
+    "max_notional": 5000.0,        # hard cap per stock position
+    "max_option_premium": 2000.0,  # hard cap on TOTAL option premium
     "min_price": 5.0,
     "max_price": 1500.0,
     "min_dollar_vol": 30e6,     # 20-day average daily dollar volume
@@ -44,6 +45,14 @@ CONFIG = {
     "meanrev_stop_atr": 0.60,
     "meanrev_tgt_atr": 0.80,
     "time_exit": "15:45 ET",
+}
+
+# Operator-adjustable settings (Settings UI overrides these per session).
+# Scan results are settings-independent; build_output applies these cheaply,
+# so toggling a setting never re-triggers the expensive scan.
+DEFAULT_SETTINGS = {
+    "risk_sizing": False,   # size stock by risk budget instead of full notional
+    "risk_budget": 75.0,    # $ risked to the stop per trade when enabled
 }
 
 # Used only if the S&P 500 constituent fetch fails.
@@ -176,6 +185,20 @@ def bs_call_price(S: float, K: float, T: float, sigma: float,
     d1 = (math.log(S / K) + (r + 0.5 * sigma * sigma) * T) / srt
     d2 = d1 - srt
     return S * _norm_cdf(d1) - K * math.exp(-r * T) * _norm_cdf(d2)
+
+
+def option_exit_value(option: dict, S: float,
+                      fallback_iv: float | None = None) -> float:
+    """$ value of the whole option position at underlying S on same-day exit.
+
+    Single valuation convention shared by the payoff chart, the option
+    block's P&L-at-stop line, and the journal scorer.
+    """
+    K = float(option["strike"])
+    n = int(option["contracts"])
+    iv = option.get("iv") or fallback_iv or 0.5
+    T = max(int(option.get("dte", 0)) - 1, 0) / 365.0  # ~1 day of theta
+    return n * 100.0 * bs_call_price(S, K, T, float(iv))
 
 
 # ----------------------------------------------------------------- stage 1 ---
@@ -357,7 +380,8 @@ def build_reasons(r: pd.Series) -> list[str]:
     return out
 
 
-def build_plan(r: pd.Series) -> dict:
+def build_plan(r: pd.Series, settings: dict | None = None) -> dict:
+    s = {**DEFAULT_SETTINGS, **(settings or {})}
     ref = float(r["live"])
     atr = float(r["atr"])
     if r["style"] == "momentum":
@@ -369,13 +393,19 @@ def build_plan(r: pd.Series) -> dict:
         tgt = ref + CONFIG["meanrev_tgt_atr"] * atr
         note = "Enter the flush — scale in near the reference, not chasing green."
     ref, stop, tgt = _round_px(ref), _round_px(stop), _round_px(tgt)
-    shares = int(CONFIG["max_notional"] // ref) if ref > 0 else 0
+    max_shares = int(CONFIG["max_notional"] // ref) if ref > 0 else 0
+    if s["risk_sizing"] and ref > stop:
+        # Fixed-fractional: risk budget / stop distance, still notional-capped.
+        shares = min(int(float(s["risk_budget"]) // (ref - stop)), max_shares)
+    else:
+        shares = max_shares
     risk = round(shares * (ref - stop), 0)
     rr = (tgt - ref) / (ref - stop) if ref > stop else float("nan")
     return {
         "entry": ref, "stop": stop, "target": tgt,
         "shares": shares, "notional": round(shares * ref, 0),
         "risk_dollars": risk, "reward_risk": round(rr, 1),
+        "risk_sized": bool(s["risk_sizing"]),
         "entry_note": note, "time_exit": CONFIG["time_exit"],
     }
 
@@ -397,17 +427,18 @@ def pick_option(symbol: str, ref: float) -> dict | None:
         mid = np.where((calls["bid"] > 0) & (calls["ask"] > 0),
                        (calls["bid"] + calls["ask"]) / 2, calls["lastPrice"])
         calls["mid"] = mid
-        calls = calls[(calls["mid"] > 0.05)
-                      & (calls["mid"] * 100 <= CONFIG["max_notional"])]
+        cap = CONFIG["max_option_premium"]
+        calls = calls[(calls["mid"] > 0.05) & (calls["mid"] * 100 <= cap)]
         if calls.empty:
-            return {"unavailable": "No contract fits under the notional cap."}
+            return {"unavailable":
+                    f"No contract fits under the ${cap:,.0f} premium cap."}
         itm = calls[calls["strike"] <= ref]
         row = (itm.sort_values("strike").iloc[-1] if not itm.empty
                else calls.sort_values("strike").iloc[0])
         m = float(row["mid"])
         spread = float(row["ask"] - row["bid"]) if row["ask"] > 0 else np.nan
         spread_pct = spread / m if m and not math.isnan(spread) else np.nan
-        contracts = int(CONFIG["max_notional"] // (m * 100))
+        contracts = int(CONFIG["max_option_premium"] // (m * 100))
         flags = []
         if pd.notna(row.get("openInterest")) and row["openInterest"] < 200:
             flags.append("thin open interest")
@@ -415,11 +446,12 @@ def pick_option(symbol: str, ref: float) -> dict | None:
             flags.append(f"wide spread ({spread_pct:.0%} of mid)")
         if dte == 0:
             flags.append("0DTE — decay is brutal, this is a scalp vehicle")
+        cost = round(contracts * m * 100, 0)
         return {
             "contract": str(row["contractSymbol"]),
             "expiry": exp, "dte": dte, "strike": float(row["strike"]),
             "mid": round(m, 2), "contracts": contracts,
-            "cost": round(contracts * m * 100, 0),
+            "cost": cost, "max_loss": cost,
             "breakeven": round(float(row["strike"]) + m, 2),
             "open_interest": int(row["openInterest"])
             if pd.notna(row.get("openInterest")) else None,
@@ -433,7 +465,12 @@ def pick_option(symbol: str, ref: float) -> dict | None:
 
 # -------------------------------------------------------------------- run ---
 
-def run_scan(progress=None) -> dict:
+def scan_market(progress=None) -> dict:
+    """Expensive half: universe -> features -> live quotes -> ranked frame.
+
+    Settings-independent, so the app can cache this and re-derive plans and
+    cards cheaply when the operator flips a setting.
+    """
     t0 = time.time()
     phase = market_phase()
     universe, source = get_universe()
@@ -455,32 +492,40 @@ def run_scan(progress=None) -> dict:
         return {"error": "No candidates survived the filters.", "diag": {
             "universe": len(universe), "filtered": len(feat)}}
 
-    top = ranked.iloc[0]
-    sym = str(top.name)
-    if progress:
-        progress(f"Building trade card for {sym}…")
-
-    try:
-        name = yf.Ticker(sym).info.get("shortName") or sym
-    except Exception:
-        name = sym
-
-    plan = build_plan(top)
-    option = pick_option(sym, plan["entry"])
-
-    card = {
-        "symbol": sym, "name": name, "style": str(top["style"]),
-        "score": round(float(top["score"]), 2),
-        "live": plan["entry"], "prev_close": float(top["prev_close"]),
-        "atr": float(top["atr"]),
-        "day_pct": float(top["day_pct"]), "gap_pct": float(top["gap_pct"]),
-        "rvol": float(top["rvol"]) if pd.notna(top["rvol"]) else None,
-        "atr_pct": float(top["atr_pct"]),
-        "reasons": build_reasons(top),
-        "plan": plan, "option": option,
-        "phase": phase, "phase_label": PHASE_LABEL[phase],
-        "asof": _fmt_asof(now_et()),
+    diag = {
+        "universe": len(universe), "source": source,
+        "passed_filters": len(feat), "stage2": len(cands),
+        "quarantined": quarantined,
+        "phase": phase, "elapsed_s": round(time.time() - t0, 1),
     }
+    return {"ranked": ranked, "diag": diag, "phase": phase,
+            "asof": _fmt_asof(now_et())}
+
+
+def _make_card(r: pd.Series, plan: dict, phase: str, asof: str) -> dict:
+    return {
+        "symbol": str(r.name), "name": str(r.name), "style": str(r["style"]),
+        "score": round(float(r["score"]), 2),
+        "live": plan["entry"], "prev_close": float(r["prev_close"]),
+        "atr": float(r["atr"]),
+        "day_pct": float(r["day_pct"]), "gap_pct": float(r["gap_pct"]),
+        "rvol": float(r["rvol"]) if pd.notna(r["rvol"]) else None,
+        "atr_pct": float(r["atr_pct"]),
+        "reasons": build_reasons(r),
+        "plan": plan, "option": None,
+        "phase": phase, "phase_label": PHASE_LABEL[phase],
+        "asof": asof,
+    }
+
+
+def build_output(scan: dict, settings: dict | None = None) -> dict:
+    """Cheap, pure half: plans, champion card, watchlist from a scan result."""
+    if "error" in scan:
+        return scan
+    ranked, phase, asof = scan["ranked"], scan["phase"], scan["asof"]
+
+    top = ranked.iloc[0]
+    card = _make_card(top, build_plan(top, settings), phase, asof)
 
     wl_cols = ["style", "score", "live", "prev_close", "day_pct", "gap_pct",
                "rvol", "atr_pct", "rsi2", "atr", "prev_low"]
@@ -489,15 +534,36 @@ def run_scan(progress=None) -> dict:
 
     # Every watchlist row gets the same ATR-based plan the champion gets, so the
     # detail view can show entry/stop/target for any symbol without a re-scan.
-    plans = {str(s): build_plan(ranked.loc[s]) for s in watchlist.index}
+    plans = {str(s): build_plan(ranked.loc[s], settings)
+             for s in watchlist.index}
 
-    diag = {
-        "universe": len(universe), "source": source,
-        "passed_filters": len(feat), "stage2": len(cands),
-        "quarantined": quarantined,
-        "phase": phase, "elapsed_s": round(time.time() - t0, 1),
-    }
-    return {"card": card, "watchlist": watchlist, "plans": plans, "diag": diag}
+    return {"card": card, "watchlist": watchlist, "plans": plans,
+            "diag": scan["diag"]}
+
+
+def enrich_card(card: dict) -> dict:
+    """Attach the network extras (company name, option pick) to a card.
+
+    Used by headless callers (journal, __main__); the app fetches these via
+    its own cached wrappers instead.
+    """
+    sym = card["symbol"]
+    try:
+        card["name"] = yf.Ticker(sym).info.get("shortName") or sym
+    except Exception:
+        card["name"] = sym
+    card["option"] = pick_option(sym, card["plan"]["entry"])
+    return card
+
+
+def run_scan(progress=None, settings: dict | None = None) -> dict:
+    """scan + derive + enrich — the one-call composition for headless use."""
+    out = build_output(scan_market(progress), settings)
+    if "error" not in out:
+        if progress:
+            progress(f"Building trade card for {out['card']['symbol']}…")
+        out["card"] = enrich_card(out["card"])
+    return out
 
 
 if __name__ == "__main__":
