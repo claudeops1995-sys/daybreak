@@ -1,0 +1,83 @@
+{
+ "schema": 1,
+ "date": "2026-07-01",
+ "scored_at_et": "2026-07-01T23:05:55.520366-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "GIS",
+   "style": "momentum",
+   "plan": {
+    "entry": 37.55,
+    "stop": 36.99,
+    "target": 38.67,
+    "shares": 133
+   },
+   "model": {
+    "entry": 37.55,
+    "exit": 36.99,
+    "exit_reason": "stop",
+    "exit_at_et": "2026-07-01 09:45:00-04:00",
+    "realized_r": -1.0,
+    "mfe_r": -0.43,
+    "mae_r": 1.33,
+    "pnl_stock": -74.0
+   },
+   "fill_ref_price": 37.62,
+   "fill": {
+    "entry": 37.62,
+    "exit": 37.31,
+    "exit_reason": "time",
+    "exit_at_et": "2026-07-01 15:45:00-04:00",
+    "realized_r": -0.49,
+    "mfe_r": 0.79,
+    "mae_r": 0.89,
+    "pnl_stock": -41.0
+   },
+   "slippage_r": 0.51,
+   "option": {
+    "contract": "GIS260717C00037500",
+    "cost": 1925.0,
+    "exit_value": 1260.0,
+    "pnl": -665.0
+   }
+  },
+  "mean-reversion": {
+   "symbol": "QCOM",
+   "style": "mean-reversion",
+   "plan": {
+    "entry": 181.7,
+    "stop": 172.07,
+    "target": 194.53,
+    "shares": 27
+   },
+   "model": {
+    "entry": 181.7,
+    "exit": 183.37,
+    "exit_reason": "time",
+    "exit_at_et": "2026-07-01 15:45:00-04:00",
+    "realized_r": 0.17,
+    "mfe_r": 0.96,
+    "mae_r": -0.03,
+    "pnl_stock": 45.0
+   },
+   "fill_ref_price": 185.11,
+   "fill": {
+    "entry": 185.11,
+    "exit": 183.37,
+    "exit_reason": "time",
+    "exit_at_et": "2026-07-01 15:45:00-04:00",
+    "realized_r": -0.13,
+    "mfe_r": 0.45,
+    "mae_r": 0.24,
+    "pnl_stock": -47.0
+   },
+   "slippage_r": -0.3,
+   "option": {
+    "contract": "QCOM260702C00180000",
+    "cost": 1680.0,
+    "exit_value": 1348.0,
+    "pnl": -332.0
+   }
+  }
+ }
+}
