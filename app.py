@@ -81,6 +81,11 @@ h1, h2, h3, p, span, div { color: #E8EEF4; }
   letter-spacing:.14em; color:#8A97A5; margin:16px 0 4px; }
 .nm { color:#C7D2DC; opacity:.55; font-size:.86rem; margin:4px 0; }
 .nm b { opacity:1; }
+.nm-gate { font-family:'IBM Plex Mono',monospace; font-size:.74rem;
+  color:#8A97A5; }
+.horizon { height:44px; margin:8px -16px 4px;
+  background:radial-gradient(120% 130% at 50% 115%,
+  rgba(255,180,84,.18), rgba(92,200,255,.06) 55%, transparent 78%); }
 
 .lvls { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
   margin:12px 0 8px; }
@@ -700,22 +705,25 @@ def render_champion(card: dict) -> None:
 
 
 def render_style_no_trade(sc: dict) -> None:
-    """Explicit per-style skip — near misses with the gate each failed."""
+    """The skip is a designed moment, not an error: dawn resting on the
+    horizon, the statement in display type, near misses greyed below with
+    the exact gate each one failed."""
     style = sc["style"]
     accent = AMBER if style == "momentum" else BLUE
     rows = "".join(
-        f'<div class="nm"><b>{m["symbol"]}</b> (score {m["score"]:.2f}) '
-        f'— {", ".join(m["failed"])}</div>'
+        f'<div class="nm"><b>{m["symbol"]}</b> · score {m["score"]:.2f} '
+        f'· <span class="nm-gate">{", ".join(m["failed"])}</span></div>'
         for m in sc.get("near_misses", []))
     st.markdown(
         '<div class="card"><div class="card-rule"></div>'
         + card_head(chip(style.upper(), accent, "outline"),
                     chip("NO TRADE", variant="muted"))
-        + '<div class="sym sym-sm">Nothing qualified</div>'
-        + f'<div class="sub">No {style} name cleared the gates — skipping '
-        + 'is a position.</div>'
-        + '<div class="why"><div class="lab">NEAR MISSES · FAILED GATES</div>'
-        + rows + '</div></div>',
+        + '<div class="sym">Nothing qualified</div>'
+        + f'<div class="sub">No {style} setup cleared the gates. '
+        + 'Skipping is a position.</div>'
+        + '<div class="horizon"></div>'
+        + '<div class="eyebrow">NEAR MISSES · FAILED GATE</div>'
+        + rows + '</div>',
         unsafe_allow_html=True)
 
 
