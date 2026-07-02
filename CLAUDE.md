@@ -31,6 +31,24 @@ Local Windows dev uses `.venv\Scripts\python.exe` (gitignored).
   try/except-guarded.
 - `journal.py` — headless capture/scorer run by GitHub Actions. No
   Streamlit imports (same rule as engine).
+- `data_sources.py` — ALL external fetches route here. Alpaca (IEX
+  real-time quotes/bars, news) and Finnhub (earnings calendar, news
+  fallback) when keys exist; **always degrades to yfinance — the app
+  must run fine with zero keys**. Every call: try/except + `_get`
+  retry/backoff. May lazily READ `st.secrets` in `_secret()` but never
+  renders UI. `POLYGON_KEY` is wired but inactive (future historical +
+  options upgrade slot).
+
+## Secrets (never in code)
+
+Same names in BOTH places — workflows and dashboard each need them:
+- **GitHub → repo → Settings → Secrets and variables → Actions**:
+  `ALPACA_KEY_ID`, `ALPACA_SECRET`, `FINNHUB_KEY`, `NTFY_TOPIC`,
+  optional `ANTHROPIC_API_KEY`, stub `POLYGON_KEY`.
+- **Streamlit Cloud → app → Settings → Secrets** (TOML `KEY = "value"`):
+  same names.
+Workflows export them as env vars; `data_sources._secret()` checks env
+first, then `st.secrets`. Missing keys silently disable that source.
 
 ## Journal (repo as database)
 

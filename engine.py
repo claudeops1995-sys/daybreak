@@ -29,6 +29,8 @@ import pandas as pd
 import requests
 import yfinance as yf
 
+import data_sources as ds
+
 ET = ZoneInfo("America/New_York")
 
 CONFIG = {
@@ -562,6 +564,16 @@ def live_snapshot(cands: pd.DataFrame, progress=None) -> pd.DataFrame:
     for col in ("today_high", "today_low", "or_high", "vwap_live"):
         if col not in out.columns:
             out[col] = np.nan
+    # Real-time overlay: Alpaca IEX latest trades when keys exist. The
+    # >25% mismatch guard below still validates these prices.
+    try:
+        rt = ds.latest_prices(syms)
+    except Exception:
+        rt = {}
+    for t, (px, rt_ts) in rt.items():
+        if t in out.index and px > 0:
+            out.loc[t, "live"] = float(px)
+            out.loc[t, "quote_time"] = pd.Timestamp(rt_ts)
     out["live"] = out["live"].fillna(out["price"])
     # If the 1-minute quote disagrees with the daily series by >25%, the two
     # series are on different split-adjustment bases — trust the daily close.

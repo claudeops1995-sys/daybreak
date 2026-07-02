@@ -16,6 +16,7 @@ import streamlit as st
 import yfinance as yf
 from plotly.subplots import make_subplots
 
+import data_sources as ds
 from engine import (DEFAULT_SETTINGS, PHASE_LABEL, STYLES, bs_call_greeks,
                     build_output, earnings_candidates, earnings_guard,
                     fetch_features, market_tape, option_exit_value,
@@ -200,6 +201,13 @@ def name_for(symbol: str) -> str:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def intraday(symbol: str) -> pd.DataFrame:
+    # Alpaca IEX 5-min bars when keys exist; yfinance otherwise.
+    try:
+        bars = ds.alpaca_intraday(symbol)
+        if bars is not None and len(bars):
+            return bars
+    except Exception:
+        pass
     df = yf.download([symbol], period="1d", interval="5m", prepost=True,
                      group_by="ticker", auto_adjust=True, progress=False)
     return df[symbol].dropna()

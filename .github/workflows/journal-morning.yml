@@ -35,6 +35,13 @@ jobs:
   capture:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+      ALPACA_SECRET: ${{ secrets.ALPACA_SECRET }}
+      FINNHUB_KEY: ${{ secrets.FINNHUB_KEY }}
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      POLYGON_KEY: ${{ secrets.POLYGON_KEY }}
     steps:
       - uses: actions/checkout@v4
         with:
