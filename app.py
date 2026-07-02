@@ -4,8 +4,10 @@ Run locally:   streamlit run app.py
 Deploy free:   share.streamlit.io  ->  point at this repo, main file app.py
 """
 
+import json
 import math
 from datetime import time as dt_time
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -148,6 +150,29 @@ def daily_history(symbol: str) -> pd.DataFrame:
 @st.cache_data(ttl=600, show_spinner=False)
 def option_for(symbol: str, ref: float) -> dict | None:
     return pick_option(symbol, ref)
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def load_journal() -> list[dict]:
+    """Read journal/ (committed by the GitHub Actions workflows; each
+    commit redeploys the app, so the files are always local)."""
+    out = []
+    base = Path(__file__).parent / "journal"
+    if not base.exists():
+        return out
+    for day in sorted(p for p in base.iterdir() if p.is_dir()):
+        off = day / "official.json"      # dryrun-* files are ignored
+        if not off.exists():
+            continue
+        try:
+            rec = json.loads(off.read_text(encoding="utf-8"))
+            outc = day / "outcomes.json"
+            rec["outcomes"] = (json.loads(outc.read_text(encoding="utf-8"))
+                               if outc.exists() else None)
+            out.append(rec)
+        except Exception:
+            continue  # one corrupt day must not hide the rest
+    return out
 
 
 def option_block_html(symbol: str, o: dict | None,
@@ -601,6 +626,78 @@ choice = st.selectbox(
 )
 if choice and choice != "—":
     render_detail(choice)
+
+# ----------------------------------------------------------------- journal ---
+
+def render_journal() -> None:
+    try:
+        days = load_journal()
+    except Exception:
+        days = []
+    if not days:
+        st.markdown(
+            '<div class="meta">No journal entries yet. The morning workflow '
+            'freezes the official cards at ~9:45 ET each weekday and the '
+            'nightly workflow scores them after the close — the first row '
+            'appears after the next full trading day.</div>',
+            unsafe_allow_html=True)
+        return
+
+    rows, stats = [], {}
+    for rec in days:
+        oc = (rec.get("outcomes") or {}).get("styles", {})
+        for style, sc in rec.get("style_cards", {}).items():
+            if sc.get("no_trade"):
+                rows.append(f'<tr style="opacity:.45"><td>{rec["date"]}</td>'
+                            f'<td>{style[:4]}</td><td>no trade</td>'
+                            '<td>—</td><td>—</td><td>—</td><td>—</td></tr>')
+                continue
+            o = oc.get(style, {})
+            m, f = o.get("model", {}), o.get("fill", {})
+            mr, fr = m.get("realized_r"), f.get("realized_r")
+            opt_pnl = (o.get("option") or {}).get("pnl")
+            chg = (rec.get("changed_from_prelim", {}).get(style, {})
+                   or {}).get("changed")
+            sym = sc["symbol"] + (" *" if chg else "")
+            if mr is not None:
+                stats.setdefault(style, []).append((mr, fr))
+            rows.append(
+                f'<tr><td>{rec["date"]}</td><td>{style[:4]}</td>'
+                f'<td>{sym}</td>'
+                f'<td>{m.get("exit_reason", "—")}</td>'
+                f'<td>{(f"{mr:+.2f}" if mr is not None else "—")}</td>'
+                f'<td>{(f"{fr:+.2f}" if fr is not None else "—")}</td>'
+                f'<td>{(f"{opt_pnl:+,.0f}" if opt_pnl is not None else "—")}'
+                '</td></tr>')
+
+    st.markdown(
+        '<table class="wl"><tr><th>DATE</th><th>STYLE</th><th>SYMBOL</th>'
+        '<th>EXIT</th><th>MODEL R</th><th>FILL R</th><th>OPT P&amp;L</th></tr>'
+        + "".join(rows) + "</table>",
+        unsafe_allow_html=True)
+
+    lines = []
+    for style, pairs in stats.items():
+        mrs = [p[0] for p in pairs]
+        frs = [p[1] for p in pairs if p[1] is not None]
+        wins = sum(1 for r in mrs if r > 0)
+        line = (f"<b>{style}</b>: {len(mrs)} trades · "
+                f"hit {wins}/{len(mrs)} · expectancy "
+                f"{sum(mrs) / len(mrs):+.2f}R")
+        if frs:
+            slip = (sum(frs) / len(frs)) - (sum(mrs) / len(mrs))
+            line += f" · fill slippage {slip:+.2f}R"
+        lines.append(line)
+    if lines:
+        st.markdown(f'<div class="meta" style="margin-top:8px">'
+                    f'{"<br>".join(lines)}<br>* champion changed between '
+                    f'9:35 prelim and 9:45 official</div>',
+                    unsafe_allow_html=True)
+
+
+st.markdown("##### Journal")
+with st.expander("Frozen decision points & outcomes"):
+    render_journal()
 
 # ---------------------------------------------------------------- settings ---
 

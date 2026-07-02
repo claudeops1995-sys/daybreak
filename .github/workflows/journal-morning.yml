@@ -1,0 +1,70 @@
+# DAYBREAK morning journal — prelim (~9:35 ET) and official (~9:45 ET)
+# decision-point captures. Cron is UTC and jittery, so we fire at several
+# minutes across both possible UTC offsets (EDT 13:xx / EST 14:xx) and let
+# journal.py gate on the actual ET clock — DST never breaks it. Runs are
+# idempotent: an existing stage file for the day is skipped.
+name: journal-morning
+
+on:
+  schedule:
+    - cron: "28,36,44,52 13,14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "auto | prelim | official"
+        default: "auto"
+        type: choice
+        options: [auto, prelim, official]
+      force:
+        description: "Bypass ET window and overwrite existing files"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Write dryrun- prefixed files (ignored by the app)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: journal
+  cancel-in-progress: false
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Capture decision point
+        env:
+          STAGE: ${{ inputs.stage }}
+          FORCE: ${{ inputs.force }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          ARGS="capture --stage ${STAGE:-auto}"
+          [ "$FORCE" = "true" ] && ARGS="$ARGS --force"
+          [ "$DRY" = "true" ] && ARGS="$ARGS --prefix dryrun-"
+          echo "journal.py $ARGS"
+          python journal.py $ARGS
+      - name: Commit journal
+        run: |
+          git config user.name "daybreak-journal[bot]"
+          git config user.email "journal-bot@users.noreply.github.com"
+          git add journal/
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "[journal] $(TZ=America/New_York date '+%Y-%m-%d %H:%M ET') capture"
+          git pull --rebase origin main
+          git push origin main

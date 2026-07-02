@@ -16,11 +16,34 @@ Local Windows dev uses `.venv\Scripts\python.exe` (gitignored).
 
 ## Architecture
 
-- `engine.py` — pure data layer, no Streamlit imports. `run_scan()` returns
-  `{card, watchlist, plans, diag}` or `{"error", "diag"}` — it must never
-  raise for data-shaped reasons (empty frames degrade to the error dict).
-- `app.py` — all UI. `cached_scan()` wraps `run_scan()`; the call site is
-  try/except-guarded so no exception ever reaches the user as a raw page.
+- `engine.py` — pure data layer, no Streamlit imports. Split into
+  `scan_market()` (expensive, settings-independent, cached by the app) →
+  `build_output(scan, settings)` (cheap, pure: gates, plans, per-style
+  champions) → `enrich_card()` (network extras for headless callers).
+  `run_scan()` composes all three for headless use. Never raises for
+  data-shaped reasons (empty frames degrade to the error dict).
+- `app.py` — all UI. `cached_scan()` caches `scan_market()`;
+  `build_output()` re-runs on every rerun so Settings changes are instant
+  and never re-trigger a scan. Call sites are try/except-guarded.
+- `journal.py` — headless capture/scorer run by GitHub Actions. No
+  Streamlit imports (same rule as engine).
+
+## Journal (repo as database)
+
+- `journal/YYYY-MM-DD/prelim.json` (~9:35 ET), `official.json` (~9:45 ET,
+  the frozen decision point outcomes are scored against), `outcomes.json`
+  (nightly ~20:30 ET: stop/target/time sequencing with stop-first on
+  ambiguous bars, MFE/MAE, realized R for both the 9:45 model entry and a
+  ~10:00 ET realistic fill, option P&L).
+- Workflows: `.github/workflows/journal-morning.yml` and
+  `journal-nightly.yml`. Cron is UTC and jittery → both fire early across
+  EDT/EST offsets and `journal.py` gates on the actual ET clock; runs are
+  idempotent (existing stage files skip; `--force` overrides).
+- **Journal commits trigger Streamlit redeploys** — that is how the app
+  sees new journal files (it reads the local `journal/` dir).
+- Dry-runs: dispatch with `dry_run=true` → `dryrun-*` files the app
+  ignores. Manual dispatch dry-run of BOTH workflows is the acceptance
+  test after any workflow/journal change.
 
 ## Conventions (hold these on every change)
 

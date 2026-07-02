@@ -1,0 +1,63 @@
+# DAYBREAK nightly scorer — grades the day's official cards against that
+# session's 5-min bars (~20:30 ET). Two UTC crons cover EDT/EST; journal.py
+# gates on the actual ET clock and skips outside 20:00-23:30 ET. Idempotent:
+# an existing outcomes.json for the day is skipped.
+name: journal-nightly
+
+on:
+  schedule:
+    - cron: "40 0,1 * * 2-6"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Bypass ET window and overwrite existing files"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Score dryrun- prefixed files (ignored by the app)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: journal
+  cancel-in-progress: false
+
+jobs:
+  score:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Score outcomes
+        env:
+          FORCE: ${{ inputs.force }}
+          DRY: ${{ inputs.dry_run }}
+        run: |
+          ARGS="score"
+          [ "$FORCE" = "true" ] && ARGS="$ARGS --force"
+          [ "$DRY" = "true" ] && ARGS="$ARGS --prefix dryrun-"
+          echo "journal.py $ARGS"
+          python journal.py $ARGS
+      - name: Commit outcomes
+        run: |
+          git config user.name "daybreak-journal[bot]"
+          git config user.email "journal-bot@users.noreply.github.com"
+          git add journal/
+          if git diff --cached --quiet; then
+            echo "nothing to commit"
+            exit 0
+          fi
+          git commit -m "[journal] $(TZ=America/New_York date '+%Y-%m-%d %H:%M ET') outcomes"
+          git pull --rebase origin main
+          git push origin main
