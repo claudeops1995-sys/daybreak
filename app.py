@@ -128,6 +128,20 @@ table.wl td:first-child { text-align:left; font-weight:600; }
   margin-right:6px; }
 
 .foot { color:#5d6976; font-size:.7rem; margin-top:18px; line-height:1.5; }
+
+/* ---- tap targets: watchlist rows & controls --------------------------- */
+.stButton>button {
+  width:100%; min-height:44px; text-align:left;
+  font-family:'IBM Plex Mono',monospace; font-size:.8rem;
+  background:#121922; color:#E8EEF4; border:1px solid #1E2935;
+  border-radius:9px; padding:8px 12px; white-space:pre;
+  transition:border-color .12s ease, background .08s ease;
+}
+.stButton>button:hover { border-color:#8A97A5; color:#E8EEF4; }
+.stButton>button:active { background:#1E2935; }   /* pressed state */
+.stButton>button[kind="primary"],
+.stButton>button[kind="primary"]:hover {
+  background:#0B0F14; border:1.5px solid #FFB454; color:#E8EEF4; }
 </style>
 """
 st.markdown(CSS, unsafe_allow_html=True)
@@ -741,50 +755,53 @@ with tab_today:
 
 with tab_today:
     st.markdown("##### Ranked watchlist")
-    rows = []
-    for sym, r in wl.iterrows():
-        dot = AMBER if r["style"] == "momentum" else BLUE
-        failed = gates.get(str(sym), [])
-        dim = ' style="opacity:.45"' if failed else ""
-        e_mark = ("<sup style=\"color:#E5484D\">E</sup>"
-                  if (earn_map.get(str(sym)) or {}).get("status") == "imminent"
-                  else "")
-        rows.append(
-            f'<tr{dim}><td><span class="dot" style="background:{dot}"></span>'
-            f'{sym}{e_mark}</td>'
-            f'<td>{r["score"]:.2f}</td><td>${r["live"]:,.2f}</td>'
-            f'<td>{r["day_pct"]:+.1%}</td>'
-            f'<td>{(f"{r.rvol:.1f}×" if pd.notna(r.rvol) else "—")}</td>'
-            f'<td>{r["atr_pct"]:.1%}</td><td>{r["rsi2"]:.0f}</td></tr>'
-        )
-    st.markdown(
-        '<table class="wl"><tr><th>SYMBOL</th><th>SCORE</th><th>LAST</th>'
-        '<th>DAY</th><th>RVOL</th><th>ATR</th><th>RSI2</th></tr>'
-        + "".join(rows) + "</table>",
-        unsafe_allow_html=True,
-    )
-    st.markdown(
-        f'<div class="meta" style="margin-top:8px">'
-        f'<span class="dot" style="background:{AMBER}"></span>momentum&nbsp;&nbsp;'
-        f'<span class="dot" style="background:{BLUE}"></span>mean-reversion'
-        f'&nbsp;&nbsp;· dimmed = failed a gate'
-        f'&nbsp;&nbsp;· <sup style="color:#E5484D">E</sup> = earnings ≤1 day</div>',
-        unsafe_allow_html=True,
-    )
+    syms = [str(s) for s in wl.index]
 
-    # detail — defaults to the overall champion so its charts/payoff show
-    # right below the list without a tap.
-    st.markdown("##### Inspect a symbol")
-    opts = ["—"] + [str(s) for s in wl.index]
-    default_idx = 0
-    if card is not None and str(card["symbol"]) in opts:
-        default_idx = opts.index(str(card["symbol"]))
-    choice = st.selectbox(
-        "watchlist detail", opts, index=default_idx,
-        key="detail_sym", label_visibility="collapsed",
-    )
-    if choice and choice != "—":
-        render_detail(choice)
+    # Sticky selection that tolerates a rescan changing the list; defaults
+    # to the overall champion so its charts/payoff show without a tap.
+    sel = st.session_state.get("detail_sym")
+    if sel not in syms:
+        sel = (str(card["symbol"])
+               if card is not None and str(card["symbol"]) in syms
+               else (syms[0] if syms else None))
+
+    smin = float(wl["score"].min()) if len(wl) else 0.0
+    rng = (float(wl["score"].max()) - smin) or 1.0
+    for sym in syms:
+        r = wl.loc[sym]
+        blocks = int(round(5 * (float(r["score"]) - smin) / rng))
+        bar = "▰" * blocks + "▱" * (5 - blocks)   # score as a bar, not a number
+        tag = "MOM" if r["style"] == "momentum" else "MRV"
+        marks = (" ✕" if gates.get(sym) else "") + (
+            " E!" if (earn_map.get(sym) or {}).get("status") == "imminent"
+            else "")
+        label = (f"{tag}  {sym:<6}{bar}  {float(r['score']):>5.2f}  "
+                 f"${float(r['live']):>9,.2f}  {float(r['day_pct']):+.1%}"
+                 f"{marks}")
+        if st.button(label, key=f"wl_{sym}",
+                     type=("primary" if sym == sel else "secondary")):
+            st.session_state["detail_sym"] = sym
+            st.rerun()
+    st.markdown(
+        '<div class="meta" style="margin-top:8px">MOM momentum · '
+        'MRV mean-reversion · ▰ score within today\'s list · '
+        '✕ failed a gate · E! earnings ≤1 day · amber border = selected'
+        '</div>', unsafe_allow_html=True)
+
+    # detail directly under the list — no page jump, chevrons to walk it.
+    if sel:
+        i = syms.index(sel)
+        c_prev, c_next, c_pad = st.columns([1, 1, 2])
+        with c_prev:
+            if st.button("‹ prev", key="det_prev", disabled=(i == 0)):
+                st.session_state["detail_sym"] = syms[i - 1]
+                st.rerun()
+        with c_next:
+            if st.button("next ›", key="det_next",
+                         disabled=(i == len(syms) - 1)):
+                st.session_state["detail_sym"] = syms[i + 1]
+                st.rerun()
+        render_detail(sel)
 
 # ----------------------------------------------------------------- journal ---
 
