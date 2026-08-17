@@ -1,0 +1,298 @@
+{
+ "schema": 1,
+ "date": "2026-08-17",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-17T09:58:09.312406-04:00",
+ "tape": {
+  "SPY": {
+   "last": 775.21,
+   "day_pct": -0.0015
+  },
+  "QQQ": {
+   "last": 732.88,
+   "day_pct": 0.0025
+  },
+  "VIX": {
+   "last": 15.01,
+   "day_pct": 0.0533
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Mon Aug 17, 2026 \u00b7 9:59 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "MRVL",
+   "name": "Marvell Technology, Inc.",
+   "style": "momentum",
+   "score": 1.76,
+   "live": 237.1,
+   "prev_close": 222.02000427246094,
+   "quote_time": "2026-08-17 09:58:00-04:00",
+   "atr": 17.005698950935635,
+   "day_pct": 0.06067021422165575,
+   "gap_pct": 0.026033684659350298,
+   "rvol": 0.984395334976644,
+   "atr_pct": 0.07222790215091711,
+   "reasons": [
+    "Gap +2.6% vs prior close",
+    "1.0\u00d7 normal volume pace",
+    "Within 1.0% of its 20-day high",
+    "Daily ATR 7.2% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 237.1,
+    "stop": 228.6,
+    "target": 253.43,
+    "shares": 21,
+    "notional": 4979.0,
+    "risk_dollars": 178.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.96,
+    "scale_note": null,
+    "status": "stalking",
+    "entry_kind": "stop_over",
+    "entry_note": "Stalking \u2014 buy stop $237.10 over the OR high.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "MRVL260821C00235000",
+    "expiry": "2026-08-21",
+    "dte": 4,
+    "strike": 235.0,
+    "mid": 9.22,
+    "contracts": 2,
+    "cost": 1845.0,
+    "max_loss": 1845.0,
+    "breakeven": 244.22,
+    "open_interest": 4889,
+    "iv": 0.823,
+    "flags": []
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Mon Aug 17, 2026 \u00b7 9:59 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 70.0,
+    "wsb_rank": 29,
+    "wsb_mentions": 10
+   }
+  },
+  "mean-reversion": {
+   "symbol": "FFIV",
+   "name": "F5, Inc.",
+   "style": "mean-reversion",
+   "score": 0.83,
+   "live": 395.74,
+   "prev_close": 403.20001220703125,
+   "quote_time": "2026-08-17 09:58:00-04:00",
+   "atr": 14.97477790089671,
+   "day_pct": -0.018502038062503168,
+   "gap_pct": -0.0075148776973277265,
+   "rvol": 0.16647914996405025,
+   "atr_pct": 0.037839941048232136,
+   "reasons": [
+    "RSI(2) at 10 \u2014 short-term washout",
+    "-6.4% over 3 sessions, still above its 200-day",
+    "0.8\u03c3 below its 20-day mean",
+    "Daily ATR 3.8% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 395.74,
+    "stop": 365.79,
+    "target": null,
+    "shares": 12,
+    "notional": 4749.0,
+    "risk_dollars": 359.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "In the flush zone \u2014 scale in here, not chasing green.",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "FFIV260821C00390000",
+    "expiry": "2026-08-21",
+    "dte": 4,
+    "strike": 390.0,
+    "mid": 11.25,
+    "contracts": 1,
+    "cost": 1125.0,
+    "max_loss": 1125.0,
+    "breakeven": 401.25,
+    "open_interest": 32,
+    "iv": 0.504,
+    "flags": [
+     "thin open interest",
+     "wide spread (20% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Mon Aug 17, 2026 \u00b7 9:59 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 89.0
+   }
+  }
+ },
+ "gates": {
+  "MRVL": [],
+  "WDC": [],
+  "MU": [],
+  "FFIV": [],
+  "LUV": [
+   "3d ret>-3%"
+  ],
+  "AVGO": [
+   "RSI2>10"
+  ]
+ },
+ "watchlist": [
+  {
+   "symbol": "MRVL",
+   "style": "momentum",
+   "score": 1.7642,
+   "live": 235.49,
+   "prev_close": 222.02,
+   "day_pct": 0.0607,
+   "gap_pct": 0.026,
+   "rvol": 0.9844,
+   "atr_pct": 0.0722,
+   "rsi2": 97.3166,
+   "atr": 17.0057,
+   "prev_low": 217.1,
+   "quote_time": 1786975080000
+  },
+  {
+   "symbol": "WDC",
+   "style": "momentum",
+   "score": 1.7344,
+   "live": 545.66,
+   "prev_close": 508.8,
+   "day_pct": 0.0724,
+   "gap_pct": 0.0329,
+   "rvol": 0.8524,
+   "atr_pct": 0.0868,
+   "rsi2": 98.3519,
+   "atr": 47.2847,
+   "prev_low": 487.1,
+   "quote_time": 1786975080000
+  },
+  {
+   "symbol": "MU",
+   "style": "momentum",
+   "score": 1.5103,
+   "live": 1018.845,
+   "prev_close": 971.66,
+   "day_pct": 0.0486,
+   "gap_pct": 0.0278,
+   "rvol": 0.7033,
+   "atr_pct": 0.0711,
+   "rsi2": 99.0965,
+   "atr": 72.7533,
+   "prev_low": 956.2,
+   "quote_time": 1786975080000
+  },
+  {
+   "symbol": "FFIV",
+   "style": "mean-reversion",
+   "score": 0.8292,
+   "live": 395.74,
+   "prev_close": 403.2,
+   "day_pct": -0.0185,
+   "gap_pct": -0.0075,
+   "rvol": 0.1665,
+   "atr_pct": 0.0378,
+   "rsi2": 9.7687,
+   "atr": 14.9748,
+   "prev_low": 402.26,
+   "quote_time": 1786975080000
+  },
+  {
+   "symbol": "LUV",
+   "style": "mean-reversion",
+   "score": 0.7388,
+   "live": 43.9,
+   "prev_close": 44.26,
+   "day_pct": -0.0081,
+   "gap_pct": -0.0038,
+   "rvol": 0.1835,
+   "atr_pct": 0.036,
+   "rsi2": 4.9993,
+   "atr": 1.5774,
+   "prev_low": 44.1,
+   "quote_time": 1786975080000
+  },
+  {
+   "symbol": "AVGO",
+   "style": "mean-reversion",
+   "score": 0.7336,
+   "live": 393.44,
+   "prev_close": 392.99,
+   "day_pct": 0.0011,
+   "gap_pct": 0.0104,
+   "rvol": 0.6541,
+   "atr_pct": 0.0422,
+   "rsi2": 10.1202,
+   "atr": 16.6224,
+   "prev_low": 388.5,
+   "quote_time": 1786975080000
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 496,
+  "stage2": 50,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 54.7
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
