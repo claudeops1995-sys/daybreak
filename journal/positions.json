@@ -1,9 +1,34 @@
 {
- "open": [],
+ "open": [
+  {
+   "symbol": "FFIV",
+   "style": "mean-reversion",
+   "entry": 395.74,
+   "stop": 365.79,
+   "shares": 12,
+   "notional": 4749.0,
+   "opened": "2026-08-17",
+   "exit_rsi": 65.0,
+   "max_days": 10,
+   "pending_exit": false,
+   "instruction": "HOLD \u2014 day 1",
+   "days_held": 1,
+   "last_close": 395.54,
+   "pnl": -2.0,
+   "rsi2": 9.7
+  }
+ ],
  "closed": [],
  "skipped": [],
- "paper_mom": [],
- "deployed": 0,
- "updated_at_et": "2026-08-14T22:01:49.526173-04:00",
+ "paper_mom": [
+  {
+   "date": "2026-08-17",
+   "symbol": "MRVL",
+   "entry": 237.1,
+   "closes": []
+  }
+ ],
+ "deployed": 4749.0,
+ "updated_at_et": "2026-08-17T22:03:09.375898-04:00",
  "last_notified": "2026-08-17"
 }

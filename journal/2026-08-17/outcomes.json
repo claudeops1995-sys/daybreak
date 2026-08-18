@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "date": "2026-08-17",
+ "scored_at_et": "2026-08-17T22:03:07.869247-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "MRVL",
+   "style": "momentum",
+   "plan": {
+    "entry": 237.1,
+    "stop": 228.6,
+    "target": 253.43,
+    "shares": 21,
+    "status": "stalking",
+    "entry_kind": "stop_over"
+   },
+   "model": {
+    "entry": 237.1,
+    "exit": 235.5,
+    "entry_kind": "stop_over",
+    "filled_at_et": "2026-08-17 09:50:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-08-17 15:45:00-04:00",
+    "realized_r": -0.19,
+    "mfe_r": 0.36,
+    "mae_r": 0.51,
+    "pnl_stock": -34.0
+   },
+   "fill_ref_price": 235.87,
+   "fill": {
+    "entry": 237.1,
+    "exit": 235.5,
+    "entry_kind": "stop_over",
+    "filled_at_et": "2026-08-17 10:00:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-08-17 15:45:00-04:00",
+    "realized_r": -0.19,
+    "mfe_r": 0.36,
+    "mae_r": 0.51,
+    "pnl_stock": -34.0
+   },
+   "slippage_r": 0.0,
+   "option": {
+    "contract": "MRVL260821C00235000",
+    "cost": 1845.0,
+    "exit_value": 1468.0,
+    "pnl": -377.0
+   }
+  },
+  "mean-reversion": {
+   "swing": true,
+   "note": "tracked in positions.json"
+  }
+ }
+}
