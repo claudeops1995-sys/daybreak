@@ -1,0 +1,337 @@
+{
+ "schema": 1,
+ "date": "2026-08-18",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-18T10:02:11.720783-04:00",
+ "tape": {
+  "SPY": {
+   "last": 768.91,
+   "day_pct": -0.0096
+  },
+  "QQQ": {
+   "last": 719.69,
+   "day_pct": -0.0156
+  },
+  "VIX": {
+   "last": 15.77,
+   "day_pct": 0.1067
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Tue Aug 18, 2026 \u00b7 10:02 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "TRGP",
+   "name": "Targa Resources, Inc.",
+   "style": "momentum",
+   "score": 1.91,
+   "live": 305.08,
+   "prev_close": 275.7900085449219,
+   "quote_time": "2026-08-18 10:02:35.304213-04:00",
+   "atr": 7.6528324372288985,
+   "day_pct": 0.07433188592740114,
+   "gap_pct": 0.06388917136683525,
+   "rvol": 1.5509245225158539,
+   "atr_pct": 0.025798382077005497,
+   "reasons": [
+    "Gap +6.4% vs prior close",
+    "1.6\u00d7 normal volume pace",
+    "Within 2.9% of its 20-day high",
+    "Daily ATR 2.6% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 305.08,
+    "stop": 301.25,
+    "target": 312.39,
+    "shares": 16,
+    "notional": 4881.0,
+    "risk_dollars": 61.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.96,
+    "scale_note": null,
+    "status": "stalking",
+    "entry_kind": "stop_over",
+    "entry_note": "Stalking \u2014 buy stop $305.08 over the OR high.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "TRGP260821C00300000",
+    "expiry": "2026-08-21",
+    "dte": 3,
+    "strike": 300.0,
+    "mid": 3.2,
+    "contracts": 6,
+    "cost": 1920.0,
+    "max_loss": 1920.0,
+    "breakeven": 303.2,
+    "open_interest": 1398,
+    "iv": 0.522,
+    "flags": [
+     "wide spread (100% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Tue Aug 18, 2026 \u00b7 10:02 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Targa Resources Announces 3 New Gas Plants And 70-Mile Bull Run II Pipeline; Raises 2026 Net Growth Capital Estimate To ~$5.0B",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61261009/targa-resources-announces-3-new-gas-plants-and-70-mile-bull-run-ii-pipeline-raises-2026-net-growth-c",
+     "ts": "2026-08-17T16:21:50-04:00"
+    },
+    {
+     "headline": "CORRECTION: Targa Resources Executes 20-Year Agreement With ExxonMobil Over Integrated Natural Gas Gathering, Processing In Permian Basin",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61260894/correction-targa-resources-executes-20-year-agreement-exxonmobil-over-integrated-natural-gas-gatheri",
+     "ts": "2026-08-17T16:18:42-04:00"
+    },
+    {
+     "headline": "Targa Resources Executes 2-Year Agreement With ExxonMobil Over Integrated Natural Gas Gathering, Processing In Permian Basin",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61260818/targa-resources-executes-2-year-agreement-exxonmobil-over-integrated-natural-gas-gathering-processin",
+     "ts": "2026-08-17T16:16:42-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 67.0
+   }
+  },
+  "mean-reversion": {
+   "symbol": "AVGO",
+   "name": "Broadcom Inc.",
+   "style": "mean-reversion",
+   "score": 1.05,
+   "live": 379.67,
+   "prev_close": 392.989990234375,
+   "quote_time": "2026-08-18 10:02:50.524204-04:00",
+   "atr": 16.622407938223517,
+   "day_pct": -0.03389396820624124,
+   "gap_pct": -0.022074322523571333,
+   "rvol": 0.7008149205387992,
+   "atr_pct": 0.04376794180375878,
+   "reasons": [
+    "RSI(2) at 2 \u2014 short-term washout",
+    "-8.7% over 3 sessions, still above its 200-day",
+    "1.1\u03c3 below its 20-day mean",
+    "Daily ATR 4.4% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 379.67,
+    "stop": 346.43,
+    "target": null,
+    "shares": 13,
+    "notional": 4936.0,
+    "risk_dollars": 432.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "In the flush zone \u2014 scale in here, not chasing green.",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "AVGO260819C00377500",
+    "expiry": "2026-08-19",
+    "dte": 1,
+    "strike": 377.5,
+    "mid": 7.0,
+    "contracts": 2,
+    "cost": 1400.0,
+    "max_loss": 1400.0,
+    "breakeven": 384.5,
+    "open_interest": 13,
+    "iv": 0.521,
+    "flags": [
+     "thin open interest"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Tue Aug 18, 2026 \u00b7 10:02 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Competitor Analysis: Evaluating Broadcom And Competitors In Semiconductors &amp; Semiconductor Equipment Industry",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61266565/competitor-analysis-evaluating-broadcom-and-competitors-semiconductors-amp-semiconductor-equipment-i",
+     "ts": "2026-08-18T05:58:48-04:00"
+    },
+    {
+     "headline": "Nvidia Is the Best S&P 500 Stock of the Past 10, 15, 20 Years \u2014 but 4 Stocks Beat It Over the Past 5 Years",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/long-ideas/26/08/61259954/nvidia-is-the-best-sp-500-stock-of-the-past-10-15-20-years-but-4-stocks-beat-it-over-the-past-5-years",
+     "ts": "2026-08-17T15:53:15-04:00"
+    },
+    {
+     "headline": "Ray Dalio Ups Bet on SPY and IVV: Time to Buy the S&P 500?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/etfs/broad-u-s-equity-etfs/26/08/61259362/ray-dalio-ups-bet-on-spy-and-ivv-time-to-buy-the-sp-500",
+     "ts": "2026-08-17T15:27:52-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 80.0,
+    "wsb_rank": 31,
+    "wsb_mentions": 16
+   }
+  }
+ },
+ "gates": {
+  "TRGP": [],
+  "DVN": [],
+  "COHR": [
+   "RSI2>10"
+  ],
+  "AVGO": [],
+  "CSCO": [
+   "RSI2>10"
+  ],
+  "PWR": []
+ },
+ "watchlist": [
+  {
+   "symbol": "TRGP",
+   "style": "momentum",
+   "score": 1.9075,
+   "live": 296.29,
+   "prev_close": 275.79,
+   "day_pct": 0.0743,
+   "gap_pct": 0.0639,
+   "rvol": 1.5509,
+   "atr_pct": 0.0258,
+   "rsi2": 97.4089,
+   "atr": 7.6528,
+   "prev_low": 268.45,
+   "quote_time": 1787061755304
+  },
+  {
+   "symbol": "DVN",
+   "style": "momentum",
+   "score": 1.4213,
+   "live": 48.19,
+   "prev_close": 45.85,
+   "day_pct": 0.051,
+   "gap_pct": 0.0469,
+   "rvol": 1.0997,
+   "atr_pct": 0.0278,
+   "rsi2": 94.1751,
+   "atr": 1.3383,
+   "prev_low": 44.7,
+   "quote_time": 1787061769414
+  },
+  {
+   "symbol": "COHR",
+   "style": "mean-reversion",
+   "score": 1.2124,
+   "live": 316.29,
+   "prev_close": 325.83,
+   "day_pct": -0.0293,
+   "gap_pct": -0.0038,
+   "rvol": 1.1578,
+   "atr_pct": 0.1087,
+   "rsi2": 18.9134,
+   "atr": 34.3776,
+   "prev_low": 317.21,
+   "quote_time": 1787061768735
+  },
+  {
+   "symbol": "AVGO",
+   "style": "mean-reversion",
+   "score": 1.0473,
+   "live": 379.67,
+   "prev_close": 392.99,
+   "day_pct": -0.0339,
+   "gap_pct": -0.0221,
+   "rvol": 0.7008,
+   "atr_pct": 0.0438,
+   "rsi2": 2.3558,
+   "atr": 16.6224,
+   "prev_low": 388.5,
+   "quote_time": 1787061770524
+  },
+  {
+   "symbol": "CSCO",
+   "style": "mean-reversion",
+   "score": 0.9632,
+   "live": 111.68,
+   "prev_close": 111.68,
+   "day_pct": 0.0,
+   "gap_pct": 0.0011,
+   "rvol": 0.2968,
+   "atr_pct": 0.0395,
+   "rsi2": 12.0528,
+   "atr": 4.4125,
+   "prev_low": 110.06,
+   "quote_time": 1787061757528
+  },
+  {
+   "symbol": "PWR",
+   "style": "momentum",
+   "score": 0.9184,
+   "live": 709.135,
+   "prev_close": 685.78,
+   "day_pct": 0.0341,
+   "gap_pct": 0.0331,
+   "rvol": 0.579,
+   "atr_pct": 0.0401,
+   "rsi2": 94.7503,
+   "atr": 28.4883,
+   "prev_low": 672.09,
+   "quote_time": 1787061712219
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 495,
+  "stage2": 49,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 38.9
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
