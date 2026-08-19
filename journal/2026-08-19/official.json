@@ -1,0 +1,331 @@
+{
+ "schema": 1,
+ "date": "2026-08-19",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-19T10:03:26.345585-04:00",
+ "tape": {
+  "SPY": {
+   "last": 769.64,
+   "day_pct": 0.0029
+  },
+  "QQQ": {
+   "last": 714.7,
+   "day_pct": -0.0039
+  },
+  "VIX": {
+   "last": 15.45,
+   "day_pct": -0.0246
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Wed Aug 19, 2026 \u00b7 10:04 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "MRVL",
+   "name": "Marvell Technology, Inc.",
+   "style": "momentum",
+   "score": 2.14,
+   "live": 245.49,
+   "prev_close": 216.0,
+   "quote_time": "2026-08-19 10:03:51.021022-04:00",
+   "atr": 17.526851616084844,
+   "day_pct": 0.07037037037037042,
+   "gap_pct": 0.11502315379955141,
+   "rvol": 2.6058001455866515,
+   "atr_pct": 0.07576885293592077,
+   "reasons": [
+    "Gap +11.5% vs prior close",
+    "2.6\u00d7 normal volume pace",
+    "Within 5.8% of its 20-day high",
+    "Daily ATR 7.6% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 245.49,
+    "stop": 236.73,
+    "target": 262.2,
+    "shares": 20,
+    "notional": 4910.0,
+    "risk_dollars": 175.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.95,
+    "scale_note": null,
+    "status": "stalking",
+    "entry_kind": "stop_over",
+    "entry_note": "Stalking \u2014 buy stop $245.49 over the OR high.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "MRVL260821C00245000",
+    "expiry": "2026-08-21",
+    "dte": 2,
+    "strike": 245.0,
+    "mid": 3.75,
+    "contracts": 5,
+    "cost": 1875.0,
+    "max_loss": 1875.0,
+    "breakeven": 248.75,
+    "open_interest": 3343,
+    "iv": 1.05,
+    "flags": []
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Wed Aug 19, 2026 \u00b7 10:04 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Why Marvell Technology Stock Is Surging Wednesday Morning",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61299394/why-marvell-technology-stock-is-surging-wednesday-morning",
+     "ts": "2026-08-19T09:19:51-04:00"
+    },
+    {
+     "headline": "Marvell Technology Enters Agreement With Google To Expand TPU Ecosystem, Including AI Inference Accelerators, Storage Controllers, Network Interface Controllers, Memory Interface Controllers And Near-Memory Compute; Company Issued To Google Warrant To Purchase Up To 58,970,907 MRVL Shares At An Exercise Price Of $206.58 Per Share",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61297730/marvell-technology-enters-agreement-google-expand-tpu-ecosystem-including-ai-inference-accelerators-",
+     "ts": "2026-08-19T08:28:21-04:00"
+    },
+    {
+     "headline": "Nasdaq Drops, Chip Stocks Crater As Bond Yields Bite: Stock Market Today",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/markets/equities/26/08/61281196/stock-market-today-nasdaq-chip-stocks-bond-yields-bite",
+     "ts": "2026-08-18T12:40:18-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 46.0,
+    "wsb_rank": 10,
+    "wsb_mentions": 67
+   }
+  },
+  "mean-reversion": {
+   "symbol": "DELL",
+   "name": "Dell Technologies Inc.",
+   "style": "mean-reversion",
+   "score": 1.08,
+   "live": 433.65,
+   "prev_close": 468.6499938964844,
+   "quote_time": "2026-08-19 10:04:04.172318-04:00",
+   "atr": 32.2733480501337,
+   "day_pct": -0.07468258690346896,
+   "gap_pct": -0.0014723193222928588,
+   "rvol": 0.8552200133249986,
+   "atr_pct": 0.07442085453488076,
+   "reasons": [
+    "RSI(2) at 5 \u2014 short-term washout",
+    "-11.6% over 3 sessions, still above its 200-day",
+    "0.3\u03c3 below its 20-day mean",
+    "Daily ATR 7.4% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 433.65,
+    "stop": 369.1,
+    "target": null,
+    "shares": 11,
+    "notional": 4770.0,
+    "risk_dollars": 710.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "In the flush zone \u2014 scale in here, not chasing green.",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "DELL260821C00437500",
+    "expiry": "2026-08-21",
+    "dte": 2,
+    "strike": 437.5,
+    "mid": 18.75,
+    "contracts": 1,
+    "cost": 1875.0,
+    "max_loss": 1875.0,
+    "breakeven": 456.25,
+    "open_interest": 60,
+    "iv": 1.317,
+    "flags": [
+     "thin open interest"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Wed Aug 19, 2026 \u00b7 10:04 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Evercore ISI Group Maintains Outperform on Dell Technologies, Raises Price Target to $550",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61299303/evercore-isi-group-maintains-outperform-dell-technologies-raises-price-target-550",
+     "ts": "2026-08-19T09:16:41-04:00"
+    },
+    {
+     "headline": "Team Liquid, Dell Extend Partnership Through 2031",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61280234/team-liquid-dell-extend-partnership-through-2031",
+     "ts": "2026-08-18T12:12:07-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 100.0
+   }
+  }
+ },
+ "gates": {
+  "EL": [
+   "earnings \u22641d"
+  ],
+  "MRVL": [],
+  "MRK": [],
+  "COHR": [
+   "RSI2>10"
+  ],
+  "DELL": [],
+  "INTC": []
+ },
+ "watchlist": [
+  {
+   "symbol": "EL",
+   "style": "momentum",
+   "score": 2.4851,
+   "live": 98.99,
+   "prev_close": 84.27,
+   "day_pct": 0.1747,
+   "gap_pct": 0.1124,
+   "rvol": 5.294,
+   "atr_pct": 0.0246,
+   "rsi2": 95.7459,
+   "atr": 2.4387,
+   "prev_low": 83.85,
+   "quote_time": 1787148252086
+  },
+  {
+   "symbol": "MRVL",
+   "style": "momentum",
+   "score": 2.1367,
+   "live": 231.2,
+   "prev_close": 216.0,
+   "day_pct": 0.0704,
+   "gap_pct": 0.115,
+   "rvol": 2.6058,
+   "atr_pct": 0.0758,
+   "rsi2": 67.1677,
+   "atr": 17.5269,
+   "prev_low": 211.1,
+   "quote_time": 1787148231021
+  },
+  {
+   "symbol": "MRK",
+   "style": "momentum",
+   "score": 1.6061,
+   "live": 149.895,
+   "prev_close": 135.17,
+   "day_pct": 0.1089,
+   "gap_pct": 0.0871,
+   "rvol": 3.3966,
+   "atr_pct": 0.0216,
+   "rsi2": 97.3248,
+   "atr": 3.237,
+   "prev_low": 134.88,
+   "quote_time": 1787148251038
+  },
+  {
+   "symbol": "COHR",
+   "style": "mean-reversion",
+   "score": 1.2618,
+   "live": 292.45,
+   "prev_close": 306.43,
+   "day_pct": -0.0456,
+   "gap_pct": 0.0087,
+   "rvol": 0.8111,
+   "atr_pct": 0.1207,
+   "rsi2": 16.2099,
+   "atr": 35.3279,
+   "prev_low": 305.5,
+   "quote_time": 1787148242961
+  },
+  {
+   "symbol": "DELL",
+   "style": "mean-reversion",
+   "score": 1.0801,
+   "live": 433.65,
+   "prev_close": 468.65,
+   "day_pct": -0.0747,
+   "gap_pct": -0.0015,
+   "rvol": 0.8552,
+   "atr_pct": 0.0744,
+   "rsi2": 4.5613,
+   "atr": 32.2733,
+   "prev_low": 458.5,
+   "quote_time": 1787148244172
+  },
+  {
+   "symbol": "INTC",
+   "style": "mean-reversion",
+   "score": 1.0797,
+   "live": 91.99,
+   "prev_close": 96.69,
+   "day_pct": -0.0486,
+   "gap_pct": 0.0051,
+   "rvol": 0.8736,
+   "atr_pct": 0.0769,
+   "rsi2": 6.5423,
+   "atr": 7.0737,
+   "prev_low": 95.25,
+   "quote_time": 1787148251162
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 494,
+  "stage2": 50,
+  "quarantined": [
+   "MRNA"
+  ],
+  "phase": "open",
+  "elapsed_s": 46.2
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
