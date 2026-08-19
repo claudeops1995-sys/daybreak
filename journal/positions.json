@@ -11,11 +11,28 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
+   "instruction": "HOLD \u2014 day 2",
+   "days_held": 2,
+   "last_close": 393.62,
+   "pnl": -25.0,
+   "rsi2": 8.0
+  },
+  {
+   "symbol": "AVGO",
+   "style": "mean-reversion",
+   "entry": 379.67,
+   "stop": 346.43,
+   "shares": 13,
+   "notional": 4936.0,
+   "opened": "2026-08-18",
+   "exit_rsi": 65.0,
+   "max_days": 10,
+   "pending_exit": false,
    "instruction": "HOLD \u2014 day 1",
    "days_held": 1,
-   "last_close": 395.54,
-   "pnl": -2.0,
-   "rsi2": 9.7
+   "last_close": 380.0,
+   "pnl": 4.0,
+   "rsi2": 1.6
   }
  ],
  "closed": [],
@@ -25,10 +42,22 @@
    "date": "2026-08-17",
    "symbol": "MRVL",
    "entry": 237.1,
+   "closes": [
+    {
+     "date": "2026-08-18",
+     "close": 216.0,
+     "pnl_pct": -0.089
+    }
+   ]
+  },
+  {
+   "date": "2026-08-18",
+   "symbol": "TRGP",
+   "entry": 305.08,
    "closes": []
   }
  ],
- "deployed": 4749.0,
- "updated_at_et": "2026-08-17T22:03:09.375898-04:00",
+ "deployed": 9685.0,
+ "updated_at_et": "2026-08-18T22:05:35.534895-04:00",
  "last_notified": "2026-08-18"
 }

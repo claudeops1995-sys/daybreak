@@ -1,0 +1,34 @@
+{
+ "schema": 1,
+ "date": "2026-08-18",
+ "scored_at_et": "2026-08-18T22:05:33.997926-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "TRGP",
+   "style": "momentum",
+   "plan": {
+    "entry": 305.08,
+    "stop": 301.25,
+    "target": 312.39,
+    "shares": 16,
+    "status": "stalking",
+    "entry_kind": "stop_over"
+   },
+   "model": {
+    "no_fill": true,
+    "entry_kind": "stop_over",
+    "exit_reason": "no_fill"
+   },
+   "fill_ref_price": 297.36,
+   "fill": {
+    "no_fill": true,
+    "entry_kind": "stop_over",
+    "exit_reason": "no_fill"
+   }
+  },
+  "mean-reversion": {
+   "swing": true,
+   "note": "tracked in positions.json"
+  }
+ }
+}
