@@ -1,0 +1,322 @@
+{
+ "schema": 1,
+ "date": "2026-08-20",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-20T10:05:58.912332-04:00",
+ "tape": {
+  "SPY": {
+   "last": 766.43,
+   "day_pct": -0.0034
+  },
+  "QQQ": {
+   "last": 712.38,
+   "day_pct": -0.0052
+  },
+  "VIX": {
+   "last": 15.67,
+   "day_pct": 0.0524
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Thu Aug 20, 2026 \u00b7 10:06 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "COIN",
+   "name": "Coinbase Global, Inc.",
+   "style": "momentum",
+   "score": 3.11,
+   "live": 173.56,
+   "prev_close": 160.1999969482422,
+   "quote_time": "2026-08-20 10:06:42.129025-04:00",
+   "atr": 8.95332008803783,
+   "day_pct": 0.07365794804334591,
+   "gap_pct": 0.07920102235793625,
+   "rvol": 2.084491339617551,
+   "atr_pct": 0.05221508149704739,
+   "reasons": [
+    "Gap +7.9% vs prior close",
+    "2.1\u00d7 normal volume pace",
+    "Within 0.9% of its 20-day high",
+    "Daily ATR 5.2% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 173.56,
+    "stop": 169.08,
+    "target": 182.06,
+    "shares": 28,
+    "notional": 4860.0,
+    "risk_dollars": 125.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.95,
+    "scale_note": "target scaled \u00d70.95 \u2014 late entry",
+    "status": "stalking",
+    "entry_kind": "stop_over",
+    "entry_note": "Stalking \u2014 buy stop $173.56 over the OR high.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "COIN260821C00172500",
+    "expiry": "2026-08-21",
+    "dte": 1,
+    "strike": 172.5,
+    "mid": 3.27,
+    "contracts": 6,
+    "cost": 1965.0,
+    "max_loss": 1965.0,
+    "breakeven": 175.78,
+    "open_interest": 1069,
+    "iv": 0.712,
+    "flags": []
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Thu Aug 20, 2026 \u00b7 10:06 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Coinbase Stock Surges Following White House Crypto Summit and Regulatory Push",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61328797/coinbase-stock-surges-following-white-house-crypto-summit-and-regulatory-push",
+     "ts": "2026-08-20T09:35:24-04:00"
+    },
+    {
+     "headline": "Bitcoin Eyes Best Week Since Trump's Election Victory: Why Is This A Fed's Warsh Problem?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/crypto/cryptocurrency/26/08/61326716/bitcoin-gold-everything-rally-fed-warsh-no-hike-signal",
+     "ts": "2026-08-20T08:36:16-04:00"
+    },
+    {
+     "headline": "Why Is Robinhood Stock Surging Thursday?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61325014/why-is-robinhood-stock-surging-thursday",
+     "ts": "2026-08-20T07:39:56-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 88.0
+   }
+  },
+  "mean-reversion": {
+   "symbol": "STLD",
+   "name": "Steel Dynamics, Inc.",
+   "style": "mean-reversion",
+   "score": 1.09,
+   "live": 219.14,
+   "prev_close": 231.00999450683594,
+   "quote_time": "2026-08-20 10:06:41.539722-04:00",
+   "atr": 9.971334379293825,
+   "day_pct": -0.051383034453449605,
+   "gap_pct": -0.017921299892182496,
+   "rvol": 0.8924827046945717,
+   "atr_pct": 0.04560826124775757,
+   "reasons": [
+    "RSI(2) at 1 \u2014 short-term washout",
+    "-15.1% over 3 sessions, still above its 200-day",
+    "2.8\u03c3 below its 20-day mean",
+    "Daily ATR 4.6% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 219.14,
+    "stop": 199.2,
+    "target": null,
+    "shares": 22,
+    "notional": 4821.0,
+    "risk_dollars": 439.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "In the flush zone \u2014 scale in here, not chasing green.",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "STLD260821C00210000",
+    "expiry": "2026-08-21",
+    "dte": 1,
+    "strike": 210.0,
+    "mid": 13.2,
+    "contracts": 1,
+    "cost": 1320.0,
+    "max_loss": 1320.0,
+    "breakeven": 223.2,
+    "open_interest": 44,
+    "iv": 1.23,
+    "flags": [
+     "thin open interest",
+     "wide spread (21% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Thu Aug 20, 2026 \u00b7 10:06 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Trump Could Reportedly Cut Canadian Auto Tariffs to 15%, Aluminum and Steel to 25%: NUE, STLD, CENX in Focus (UPDATED)",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/politics/26/08/61320682/us-could-cut-canadian-auto-tariffs-to-15-aluminum-and-steel-to-25-under-proposed-trade-deal-report",
+     "ts": "2026-08-20T09:08:43-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 100.0
+   }
+  }
+ },
+ "gates": {
+  "COIN": [],
+  "HOOD": [],
+  "COHR": [
+   "RSI2>10"
+  ],
+  "STLD": [],
+  "FLEX": [],
+  "MRVL": [
+   "gap<1.5% & rvol<1.5\u00d7"
+  ]
+ },
+ "watchlist": [
+  {
+   "symbol": "COIN",
+   "style": "momentum",
+   "score": 3.1134,
+   "live": 172.0,
+   "prev_close": 160.2,
+   "day_pct": 0.0737,
+   "gap_pct": 0.0792,
+   "rvol": 2.0845,
+   "atr_pct": 0.0522,
+   "rsi2": 92.8223,
+   "atr": 8.9533,
+   "prev_low": 147.5,
+   "quote_time": 1787234802129
+  },
+  {
+   "symbol": "HOOD",
+   "style": "momentum",
+   "score": 1.7953,
+   "live": 97.56,
+   "prev_close": 95.77,
+   "day_pct": 0.0187,
+   "gap_pct": 0.053,
+   "rvol": 1.1586,
+   "atr_pct": 0.0542,
+   "rsi2": 73.5076,
+   "atr": 5.2774,
+   "prev_low": 92.19,
+   "quote_time": 1787234810584
+  },
+  {
+   "symbol": "COHR",
+   "style": "mean-reversion",
+   "score": 1.3375,
+   "live": 281.74,
+   "prev_close": 287.47,
+   "day_pct": -0.0199,
+   "gap_pct": 0.0142,
+   "rvol": 0.4651,
+   "atr_pct": 0.1231,
+   "rsi2": 12.1084,
+   "atr": 34.7509,
+   "prev_low": 284.75,
+   "quote_time": 1787234779069
+  },
+  {
+   "symbol": "STLD",
+   "style": "mean-reversion",
+   "score": 1.0893,
+   "live": 219.14,
+   "prev_close": 231.01,
+   "day_pct": -0.0514,
+   "gap_pct": -0.0179,
+   "rvol": 0.8925,
+   "atr_pct": 0.0456,
+   "rsi2": 1.3306,
+   "atr": 9.9713,
+   "prev_low": 223.2,
+   "quote_time": 1787234801539
+  },
+  {
+   "symbol": "FLEX",
+   "style": "mean-reversion",
+   "score": 0.9617,
+   "live": 111.635,
+   "prev_close": 113.03,
+   "day_pct": -0.0123,
+   "gap_pct": -0.0035,
+   "rvol": 0.2201,
+   "atr_pct": 0.0729,
+   "rsi2": 7.9435,
+   "atr": 8.1319,
+   "prev_low": 112.85,
+   "quote_time": 1787234788239
+  },
+  {
+   "symbol": "MRVL",
+   "style": "momentum",
+   "score": 0.893,
+   "live": 236.17,
+   "prev_close": 237.27,
+   "day_pct": -0.0046,
+   "gap_pct": 0.0031,
+   "rvol": 1.0772,
+   "atr_pct": 0.0777,
+   "rsi2": 69.7008,
+   "atr": 18.3814,
+   "prev_low": 228.1,
+   "quote_time": 1787234772586
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 496,
+  "stage2": 49,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 53.2
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
