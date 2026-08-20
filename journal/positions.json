@@ -11,11 +11,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 2",
-   "days_held": 2,
-   "last_close": 393.62,
-   "pnl": -25.0,
-   "rsi2": 8.0
+   "instruction": "HOLD \u2014 day 3",
+   "days_held": 3,
+   "last_close": 382.63,
+   "pnl": -157.0,
+   "rsi2": 2.6
   },
   {
    "symbol": "AVGO",
@@ -28,11 +28,28 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
+   "instruction": "HOLD \u2014 day 2",
+   "days_held": 2,
+   "last_close": 362.48,
+   "pnl": -223.0,
+   "rsi2": 0.6
+  },
+  {
+   "symbol": "DELL",
+   "style": "mean-reversion",
+   "entry": 433.65,
+   "stop": 369.1,
+   "shares": 11,
+   "notional": 4770.0,
+   "opened": "2026-08-19",
+   "exit_rsi": 65.0,
+   "max_days": 10,
+   "pending_exit": false,
    "instruction": "HOLD \u2014 day 1",
    "days_held": 1,
-   "last_close": 380.0,
-   "pnl": 4.0,
-   "rsi2": 1.6
+   "last_close": 437.55,
+   "pnl": 43.0,
+   "rsi2": 5.0
   }
  ],
  "closed": [],
@@ -47,6 +64,11 @@
      "date": "2026-08-18",
      "close": 216.0,
      "pnl_pct": -0.089
+    },
+    {
+     "date": "2026-08-19",
+     "close": 237.27,
+     "pnl_pct": 0.0007
     }
    ]
   },
@@ -54,10 +76,22 @@
    "date": "2026-08-18",
    "symbol": "TRGP",
    "entry": 305.08,
+   "closes": [
+    {
+     "date": "2026-08-19",
+     "close": 297.09,
+     "pnl_pct": -0.0262
+    }
+   ]
+  },
+  {
+   "date": "2026-08-19",
+   "symbol": "MRVL",
+   "entry": 245.49,
    "closes": []
   }
  ],
- "deployed": 9685.0,
- "updated_at_et": "2026-08-18T22:05:35.534895-04:00",
+ "deployed": 14455.0,
+ "updated_at_et": "2026-08-19T22:04:44.925740-04:00",
  "last_notified": "2026-08-19"
 }
