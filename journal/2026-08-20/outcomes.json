@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "date": "2026-08-20",
+ "scored_at_et": "2026-08-20T22:10:52.069278-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "COIN",
+   "style": "momentum",
+   "plan": {
+    "entry": 173.56,
+    "stop": 169.08,
+    "target": 182.06,
+    "shares": 28,
+    "status": "stalking",
+    "entry_kind": "stop_over"
+   },
+   "model": {
+    "entry": 173.56,
+    "exit": 171.35,
+    "entry_kind": "stop_over",
+    "filled_at_et": "2026-08-20 11:00:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-08-20 15:45:00-04:00",
+    "realized_r": -0.49,
+    "mfe_r": 0.27,
+    "mae_r": 0.81,
+    "pnl_stock": -62.0
+   },
+   "fill_ref_price": 170.23,
+   "fill": {
+    "entry": 173.56,
+    "exit": 171.35,
+    "entry_kind": "stop_over",
+    "filled_at_et": "2026-08-20 11:00:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-08-20 15:45:00-04:00",
+    "realized_r": -0.49,
+    "mfe_r": 0.27,
+    "mae_r": 0.81,
+    "pnl_stock": -62.0
+   },
+   "slippage_r": 0.0,
+   "option": {
+    "contract": "COIN260821C00172500",
+    "cost": 1965.0,
+    "exit_value": 74.0,
+    "pnl": -1891.0
+   }
+  },
+  "mean-reversion": {
+   "swing": true,
+   "note": "tracked in positions.json"
+  }
+ }
+}
