@@ -1,0 +1,315 @@
+{
+ "schema": 1,
+ "date": "2026-08-21",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-21T10:04:01.204134-04:00",
+ "tape": {
+  "SPY": {
+   "last": 764.84,
+   "day_pct": 0.0029
+  },
+  "QQQ": {
+   "last": 710.86,
+   "day_pct": -0.0001
+  },
+  "VIX": {
+   "last": 15.45,
+   "day_pct": -0.035
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Fri Aug 21, 2026 \u00b7 10:04 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "HOOD",
+   "name": "Robinhood Markets, Inc.",
+   "style": "momentum",
+   "score": 2.4,
+   "live": 108.06,
+   "prev_close": 95.0999984741211,
+   "quote_time": "2026-08-21 10:04:31.788975-04:00",
+   "atr": 5.468977145803133,
+   "day_pct": 0.13633019699161175,
+   "gap_pct": 0.06077811642520414,
+   "rvol": 3.1029094848765,
+   "atr_pct": 0.050643367478368714,
+   "reasons": [
+    "Gap +6.1% vs prior close",
+    "3.1\u00d7 normal volume pace",
+    "Within 0.8% of its 20-day high",
+    "Daily ATR 5.1% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 108.06,
+    "stop": 105.33,
+    "target": 113.28,
+    "shares": 46,
+    "notional": 4971.0,
+    "risk_dollars": 126.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.95,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "Triggered \u2014 through the OR high, above VWAP.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "HOOD260821C00108000",
+    "expiry": "2026-08-21",
+    "dte": 0,
+    "strike": 108.0,
+    "mid": 1.0,
+    "contracts": 20,
+    "cost": 2000.0,
+    "max_loss": 2000.0,
+    "breakeven": 109.0,
+    "open_interest": 1407,
+    "iv": 0.434,
+    "flags": [
+     "0DTE \u2014 decay is brutal, this is a scalp vehicle"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Fri Aug 21, 2026 \u00b7 10:04 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "What's Going On With Robinhood Markets Stock Thursday?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61339973/whats-going-on-with-robinhood-markets-stock-thursday",
+     "ts": "2026-08-20T13:56:52-04:00"
+    },
+    {
+     "headline": "Ripple CEO Garlinghouse Says Crypto Isn't 'Fringe' After President Trump Declares US Is 'Winning'",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/crypto/cryptocurrency/26/08/61332595/ripple-ceo-garlinghouse-says-crypto-isnt-fringe-after-president-trump-declares-us-is-winning",
+     "ts": "2026-08-20T10:46:11-04:00"
+    },
+    {
+     "headline": "Why Is Robinhood Stock Surging Thursday?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61325014/why-is-robinhood-stock-surging-thursday",
+     "ts": "2026-08-20T07:39:56-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 79.0,
+    "wsb_rank": 12,
+    "wsb_mentions": 53
+   }
+  },
+  "mean-reversion": {
+   "symbol": "FLEX",
+   "name": "Flex Ltd.",
+   "style": "mean-reversion",
+   "score": 0.81,
+   "live": 109.92,
+   "prev_close": 110.31999969482422,
+   "quote_time": "2026-08-21 10:04:29.147867-04:00",
+   "atr": 7.774582211751291,
+   "day_pct": -0.0036258130523090237,
+   "gap_pct": 0.01921684873501217,
+   "rvol": 0.2357591365415941,
+   "atr_pct": 0.07043150845942253,
+   "reasons": [
+    "RSI(2) at 8 \u2014 short-term washout",
+    "-8.6% over 3 sessions, still above its 200-day",
+    "1.2\u03c3 below its 20-day mean",
+    "Daily ATR 7.0% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 109.92,
+    "stop": 94.37,
+    "target": null,
+    "shares": 45,
+    "notional": 4946.0,
+    "risk_dollars": 700.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "In the flush zone \u2014 scale in here, not chasing green.",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "FLEX260821C00105000",
+    "expiry": "2026-08-21",
+    "dte": 0,
+    "strike": 105.0,
+    "mid": 7.3,
+    "contracts": 2,
+    "cost": 1460.0,
+    "max_loss": 1460.0,
+    "breakeven": 112.3,
+    "open_interest": 386,
+    "iv": 1.96,
+    "flags": [
+     "wide spread (41% of mid)",
+     "0DTE \u2014 decay is brutal, this is a scalp vehicle"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Fri Aug 21, 2026 \u00b7 10:04 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 100.0
+   }
+  }
+ },
+ "gates": {
+  "HOOD": [],
+  "COIN": [],
+  "FCX": [],
+  "FLEX": [],
+  "INTC": [],
+  "CRWD": []
+ },
+ "watchlist": [
+  {
+   "symbol": "HOOD",
+   "style": "momentum",
+   "score": 2.4019,
+   "live": 108.065,
+   "prev_close": 95.1,
+   "day_pct": 0.1363,
+   "gap_pct": 0.0608,
+   "rvol": 3.1029,
+   "atr_pct": 0.0506,
+   "rsi2": 93.082,
+   "atr": 5.469,
+   "prev_low": 93.65,
+   "quote_time": 1787321071788
+  },
+  {
+   "symbol": "COIN",
+   "style": "momentum",
+   "score": 1.8273,
+   "live": 188.6,
+   "prev_close": 172.35,
+   "day_pct": 0.0943,
+   "gap_pct": 0.0447,
+   "rvol": 2.717,
+   "atr_pct": 0.0494,
+   "rsi2": 97.3695,
+   "atr": 9.3552,
+   "prev_low": 166.11,
+   "quote_time": 1787321071867
+  },
+  {
+   "symbol": "FCX",
+   "style": "momentum",
+   "score": 1.551,
+   "live": 76.38,
+   "prev_close": 71.22,
+   "day_pct": 0.0725,
+   "gap_pct": 0.0455,
+   "rvol": 2.1804,
+   "atr_pct": 0.0362,
+   "rsi2": 95.6385,
+   "atr": 2.7604,
+   "prev_low": 67.72,
+   "quote_time": 1787321072860
+  },
+  {
+   "symbol": "FLEX",
+   "style": "mean-reversion",
+   "score": 0.8116,
+   "live": 109.92,
+   "prev_close": 110.32,
+   "day_pct": -0.0036,
+   "gap_pct": 0.0192,
+   "rvol": 0.2358,
+   "atr_pct": 0.0704,
+   "rsi2": 8.2066,
+   "atr": 7.7746,
+   "prev_low": 109.9,
+   "quote_time": 1787321069147
+  },
+  {
+   "symbol": "INTC",
+   "style": "mean-reversion",
+   "score": 0.7958,
+   "live": 90.59,
+   "prev_close": 92.13,
+   "day_pct": -0.0167,
+   "gap_pct": 0.0069,
+   "rvol": 0.8558,
+   "atr_pct": 0.0747,
+   "rsi2": 3.7955,
+   "atr": 6.7689,
+   "prev_low": 89.85,
+   "quote_time": 1787321071404
+  },
+  {
+   "symbol": "CRWD",
+   "style": "mean-reversion",
+   "score": 0.7905,
+   "live": 189.32,
+   "prev_close": 190.34,
+   "day_pct": -0.0054,
+   "gap_pct": 0.0008,
+   "rvol": 0.7207,
+   "atr_pct": 0.0507,
+   "rsi2": 0.8797,
+   "atr": 9.6077,
+   "prev_low": 189.93,
+   "quote_time": 1787321070872
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 496,
+  "stage2": 50,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 32.1
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
