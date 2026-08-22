@@ -11,11 +11,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 4",
-   "days_held": 4,
-   "last_close": 377.79,
-   "pnl": -215.0,
-   "rsi2": 1.6
+   "instruction": "HOLD \u2014 day 5",
+   "days_held": 5,
+   "last_close": 384.63,
+   "pnl": -133.0,
+   "rsi2": 52.0
   },
   {
    "symbol": "AVGO",
@@ -28,11 +28,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 3",
-   "days_held": 3,
-   "last_close": 364.03,
-   "pnl": -203.0,
-   "rsi2": 10.7
+   "instruction": "HOLD \u2014 day 4",
+   "days_held": 4,
+   "last_close": 368.45,
+   "pnl": -146.0,
+   "rsi2": 43.6
   },
   {
    "symbol": "DELL",
@@ -45,11 +45,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 2",
-   "days_held": 2,
-   "last_close": 434.78,
-   "pnl": 12.0,
-   "rsi2": 4.4
+   "instruction": "HOLD \u2014 day 3",
+   "days_held": 3,
+   "last_close": 442.08,
+   "pnl": 93.0,
+   "rsi2": 40.6
   },
   {
    "symbol": "STLD",
@@ -62,11 +62,28 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
+   "instruction": "HOLD \u2014 day 2",
+   "days_held": 2,
+   "last_close": 228.68,
+   "pnl": 210.0,
+   "rsi2": 45.1
+  },
+  {
+   "symbol": "FLEX",
+   "style": "mean-reversion",
+   "entry": 109.92,
+   "stop": 94.37,
+   "shares": 45,
+   "notional": 4946.0,
+   "opened": "2026-08-21",
+   "exit_rsi": 65.0,
+   "max_days": 10,
+   "pending_exit": false,
    "instruction": "HOLD \u2014 day 1",
    "days_held": 1,
-   "last_close": 219.0,
-   "pnl": -3.0,
-   "rsi2": 1.4
+   "last_close": 110.45,
+   "pnl": 24.0,
+   "rsi2": 9.4
   }
  ],
  "closed": [],
@@ -108,6 +125,11 @@
      "date": "2026-08-20",
      "close": 302.25,
      "pnl_pct": -0.0093
+    },
+    {
+     "date": "2026-08-21",
+     "close": 299.1,
+     "pnl_pct": -0.0196
     }
    ]
   },
@@ -120,6 +142,11 @@
      "date": "2026-08-20",
      "close": 251.01,
      "pnl_pct": 0.0225
+    },
+    {
+     "date": "2026-08-21",
+     "close": 237.04,
+     "pnl_pct": -0.0344
     }
    ]
   },
@@ -127,10 +154,22 @@
    "date": "2026-08-20",
    "symbol": "COIN",
    "entry": 173.56,
+   "closes": [
+    {
+     "date": "2026-08-21",
+     "close": 186.49,
+     "pnl_pct": 0.0745
+    }
+   ]
+  },
+  {
+   "date": "2026-08-21",
+   "symbol": "HOOD",
+   "entry": 108.06,
    "closes": []
   }
  ],
- "deployed": 19276.0,
- "updated_at_et": "2026-08-20T22:10:53.592961-04:00",
+ "deployed": 24222.0,
+ "updated_at_et": "2026-08-21T22:03:11.770728-04:00",
  "last_notified": "2026-08-21"
 }

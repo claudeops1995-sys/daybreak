@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "date": "2026-08-21",
+ "scored_at_et": "2026-08-21T22:03:09.968949-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "HOOD",
+   "style": "momentum",
+   "plan": {
+    "entry": 108.06,
+    "stop": 105.33,
+    "target": 113.28,
+    "shares": 46,
+    "status": "triggered",
+    "entry_kind": "market"
+   },
+   "model": {
+    "entry": 108.06,
+    "exit": 107.56,
+    "entry_kind": "market",
+    "filled_at_et": "2026-08-21 09:45:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-08-21 15:45:00-04:00",
+    "realized_r": -0.18,
+    "mfe_r": 0.6,
+    "mae_r": 0.98,
+    "pnl_stock": -23.0
+   },
+   "fill_ref_price": 107.85,
+   "fill": {
+    "entry": 107.85,
+    "exit": 107.56,
+    "entry_kind": "market",
+    "filled_at_et": "2026-08-21 10:00:00-04:00",
+    "exit_reason": "time",
+    "exit_at_et": "2026-08-21 15:45:00-04:00",
+    "realized_r": -0.12,
+    "mfe_r": 0.74,
+    "mae_r": 0.98,
+    "pnl_stock": -13.0
+   },
+   "slippage_r": 0.06,
+   "option": {
+    "contract": "HOOD260821C00108000",
+    "cost": 2000.0,
+    "exit_value": 0.0,
+    "pnl": -2000.0
+   }
+  },
+  "mean-reversion": {
+   "swing": true,
+   "note": "tracked in positions.json"
+  }
+ }
+}
