@@ -1,0 +1,311 @@
+{
+ "schema": 1,
+ "date": "2026-08-24",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-24T10:08:38.324305-04:00",
+ "tape": {
+  "SPY": {
+   "last": 762.69,
+   "day_pct": -0.004
+  },
+  "QQQ": {
+   "last": 703.18,
+   "day_pct": -0.0144
+  },
+  "VIX": {
+   "last": 15.95,
+   "day_pct": 0.0542
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Mon Aug 24, 2026 \u00b7 10:09 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "FCX",
+   "name": "Freeport-McMoRan, Inc.",
+   "style": "momentum",
+   "score": 1.24,
+   "live": 78.88,
+   "prev_close": 76.66000366210938,
+   "quote_time": "2026-08-24 10:09:18.868838-04:00",
+   "atr": 2.9996382302092224,
+   "day_pct": 0.012718448882262923,
+   "gap_pct": 0.022567122944114226,
+   "rvol": 1.0073478163693281,
+   "atr_pct": 0.03865393548661576,
+   "reasons": [
+    "Gap +2.3% vs prior close",
+    "1.0\u00d7 normal volume pace",
+    "Within 1.6% of its 20-day high",
+    "Daily ATR 3.9% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 78.88,
+    "stop": 77.38,
+    "target": 81.72,
+    "shares": 63,
+    "notional": 4969.0,
+    "risk_dollars": 94.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.95,
+    "scale_note": "target scaled \u00d70.95 \u2014 late entry",
+    "status": "stalking",
+    "entry_kind": "stop_over",
+    "entry_note": "Stalking \u2014 buy stop $78.88 over the OR high.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "FCX260828C00078000",
+    "expiry": "2026-08-28",
+    "dte": 4,
+    "strike": 78.0,
+    "mid": 1.94,
+    "contracts": 10,
+    "cost": 1935.0,
+    "max_loss": 1935.0,
+    "breakeven": 79.94,
+    "open_interest": 320,
+    "iv": 0.583,
+    "flags": [
+     "wide spread (18% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Mon Aug 24, 2026 \u00b7 10:09 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 100.0
+   }
+  },
+  "mean-reversion": {
+   "symbol": "WDC",
+   "name": "Western Digital Corporation",
+   "style": "mean-reversion",
+   "score": 1.1,
+   "live": 424.23,
+   "prev_close": 459.44000244140625,
+   "quote_time": "2026-08-24 10:09:13.594034-04:00",
+   "atr": 43.13338097982886,
+   "day_pct": -0.07663678011123265,
+   "gap_pct": -0.034404942434139496,
+   "rvol": 0.6960330533608075,
+   "atr_pct": 0.10163379264880372,
+   "reasons": [
+    "RSI(2) at 7 \u2014 short-term washout",
+    "-8.2% over 3 sessions, still above its 200-day",
+    "1.4\u03c3 below its 20-day mean",
+    "Daily ATR 10.2% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 424.23,
+    "stop": 337.96,
+    "target": null,
+    "shares": 11,
+    "notional": 4667.0,
+    "risk_dollars": 949.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "In the flush zone \u2014 scale in here, not chasing green.",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "WDC260828C00422500",
+    "expiry": "2026-08-28",
+    "dte": 4,
+    "strike": 422.5,
+    "mid": 17.23,
+    "contracts": 1,
+    "cost": 1723.0,
+    "max_loss": 1723.0,
+    "breakeven": 439.73,
+    "open_interest": 44,
+    "iv": 0.821,
+    "flags": [
+     "thin open interest",
+     "wide spread (15% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Mon Aug 24, 2026 \u00b7 10:09 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "What's Going On With Western Digital Stock Monday?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61378102/whats-going-on-with-western-digital-stock-monday-2",
+     "ts": "2026-08-24T07:25:56-04:00"
+    },
+    {
+     "headline": "SanDisk, Micron, Western Digital Remain Cheap as Cyclical and AI Bubble Concerns Remain",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/markets/equities/26/08/61372957/sandisk-micron-western-digital-stocks-remain-cheap-as-cyclical-and-ai-bubble-concerns-remain",
+     "ts": "2026-08-23T13:31:32-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 64.0
+   }
+  }
+ },
+ "gates": {
+  "FCX": [],
+  "COIN": [
+   "gap<1.5% & rvol<1.5\u00d7"
+  ],
+  "ACN": [],
+  "WDC": [],
+  "INTC": [],
+  "MRNA": [
+   "RSI2>10"
+  ]
+ },
+ "watchlist": [
+  {
+   "symbol": "FCX",
+   "style": "momentum",
+   "score": 1.242,
+   "live": 77.635,
+   "prev_close": 76.66,
+   "day_pct": 0.0127,
+   "gap_pct": 0.0226,
+   "rvol": 1.0073,
+   "atr_pct": 0.0387,
+   "rsi2": 96.7173,
+   "atr": 2.9996,
+   "prev_low": 74.4,
+   "quote_time": 1787580558868
+  },
+  {
+   "symbol": "COIN",
+   "style": "momentum",
+   "score": 1.1984,
+   "live": 188.365,
+   "prev_close": 186.49,
+   "day_pct": 0.0101,
+   "gap_pct": 0.0119,
+   "rvol": 1.1617,
+   "atr_pct": 0.0535,
+   "rsi2": 97.3517,
+   "atr": 10.0449,
+   "prev_low": 179.2,
+   "quote_time": 1787580557763
+  },
+  {
+   "symbol": "ACN",
+   "style": "momentum",
+   "score": 1.1848,
+   "live": 186.97,
+   "prev_close": 185.28,
+   "day_pct": 0.0091,
+   "gap_pct": -0.0035,
+   "rvol": 1.6552,
+   "atr_pct": 0.0429,
+   "rsi2": 88.0107,
+   "atr": 8.0193,
+   "prev_low": 180.02,
+   "quote_time": 1787580554540
+  },
+  {
+   "symbol": "WDC",
+   "style": "mean-reversion",
+   "score": 1.0963,
+   "live": 424.23,
+   "prev_close": 459.44,
+   "day_pct": -0.0766,
+   "gap_pct": -0.0344,
+   "rvol": 0.696,
+   "atr_pct": 0.1016,
+   "rsi2": 6.5254,
+   "atr": 43.1334,
+   "prev_low": 454.33,
+   "quote_time": 1787580553594
+  },
+  {
+   "symbol": "INTC",
+   "style": "mean-reversion",
+   "score": 0.9949,
+   "live": 85.895,
+   "prev_close": 90.07,
+   "day_pct": -0.0464,
+   "gap_pct": -0.0154,
+   "rvol": 0.7251,
+   "atr_pct": 0.0758,
+   "rsi2": 1.1389,
+   "atr": 6.5011,
+   "prev_low": 89.75,
+   "quote_time": 1787580562110
+  },
+  {
+   "symbol": "MRNA",
+   "style": "mean-reversion",
+   "score": 0.9714,
+   "live": 133.08,
+   "prev_close": 145.13,
+   "day_pct": -0.083,
+   "gap_pct": -0.0167,
+   "rvol": 1.1454,
+   "atr_pct": 0.1116,
+   "rsi2": 47.2837,
+   "atr": 14.8852,
+   "prev_low": 132.42,
+   "quote_time": 1787580550094
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 497,
+  "stage2": 50,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 44.9
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
