@@ -1,0 +1,316 @@
+{
+ "schema": 1,
+ "date": "2026-08-25",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-25T10:11:29.569607-04:00",
+ "tape": {
+  "SPY": {
+   "last": 765.31,
+   "day_pct": 0.0024
+  },
+  "QQQ": {
+   "last": 710.72,
+   "day_pct": 0.0062
+  },
+  "VIX": {
+   "last": 15.86,
+   "day_pct": 0.0006
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Tue Aug 25, 2026 \u00b7 10:12 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "MRNA",
+   "name": "Moderna, Inc.",
+   "style": "momentum",
+   "score": 1.79,
+   "live": 153.2,
+   "prev_close": 138.88999938964844,
+   "quote_time": "2026-08-25 10:12:17.674397-04:00",
+   "atr": 14.92907303822577,
+   "day_pct": 0.1030311805978601,
+   "gap_pct": 0.032579695560295496,
+   "rvol": 1.458675894649791,
+   "atr_pct": 0.09667210869826744,
+   "reasons": [
+    "Gap +3.3% vs prior close",
+    "1.5\u00d7 normal volume pace",
+    "Within 13.3% of its 20-day high",
+    "Daily ATR 9.7% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 153.2,
+    "stop": 145.74,
+    "target": 167.26,
+    "shares": 32,
+    "notional": 4902.0,
+    "risk_dollars": 239.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.94,
+    "scale_note": "target scaled \u00d70.94 \u2014 late entry",
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "Triggered \u2014 through the OR high, above VWAP.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "MRNA260828C00152500",
+    "expiry": "2026-08-28",
+    "dte": 3,
+    "strike": 152.5,
+    "mid": 7.9,
+    "contracts": 2,
+    "cost": 1580.0,
+    "max_loss": 1580.0,
+    "breakeven": 160.4,
+    "open_interest": 1173,
+    "iv": 1.198,
+    "flags": []
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Tue Aug 25, 2026 \u00b7 10:12 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Nayax, Immatics, Moderna, Marvell Technology And Other Big Stocks Moving Higher On Tuesday",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61409633/nayax-immatics-moderna-marvell-technology-and-other-big-stocks-moving-higher-on-tuesday",
+     "ts": "2026-08-25T10:03:47-04:00"
+    },
+    {
+     "headline": "Moderna Stock Edges Higher Tuesday: What's Happening?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61407627/moderna-stock-edges-higher-tuesday-whats-happening",
+     "ts": "2026-08-25T09:18:48-04:00"
+    },
+    {
+     "headline": "What\u2019s Going On With Tempus AI Stock on Monday?",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/trading-ideas/movers/26/08/61392115/whats-going-on-with-tempus-ai-stock-on-monday",
+     "ts": "2026-08-24T14:02:51-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 88.0,
+    "wsb_rank": 8,
+    "wsb_mentions": 46
+   }
+  },
+  "mean-reversion": {
+   "symbol": "ADM",
+   "name": "Archer-Daniels-Midland Company",
+   "style": "mean-reversion",
+   "score": 0.88,
+   "live": 76.22,
+   "prev_close": 78.16000366210938,
+   "quote_time": "2026-08-25 10:12:11.162145-04:00",
+   "atr": 2.4326074413419314,
+   "day_pct": -0.022581929112229893,
+   "gap_pct": -0.00793248103291222,
+   "rvol": 0.2683616223711863,
+   "atr_pct": 0.0318570903863005,
+   "reasons": [
+    "RSI(2) at 5 \u2014 short-term washout",
+    "-6.5% over 3 sessions, still above its 200-day",
+    "1.7\u03c3 below its 20-day mean",
+    "Daily ATR 3.2% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 76.22,
+    "stop": 71.36,
+    "target": null,
+    "shares": 65,
+    "notional": 4954.0,
+    "risk_dollars": 316.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "stalking",
+    "entry_kind": "limit",
+    "entry_note": "Stalking \u2014 limit $76.22 at the flush zone (session low + 0.15 ATR).",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "ADM260918C00075000",
+    "expiry": "2026-09-18",
+    "dte": 24,
+    "strike": 75.0,
+    "mid": 3.2,
+    "contracts": 6,
+    "cost": 1920.0,
+    "max_loss": 1920.0,
+    "breakeven": 78.2,
+    "open_interest": 1204,
+    "iv": 0.335,
+    "flags": [
+     "wide spread (12% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Tue Aug 25, 2026 \u00b7 10:12 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 94.0
+   }
+  }
+ },
+ "gates": {
+  "MRNA": [],
+  "MRVL": [],
+  "WDC": [
+   "RSI2>10"
+  ],
+  "ADM": [],
+  "SMCI": [],
+  "PWR": [
+   "RSI2>10"
+  ]
+ },
+ "watchlist": [
+  {
+   "symbol": "MRNA",
+   "style": "momentum",
+   "score": 1.7859,
+   "live": 153.2,
+   "prev_close": 138.89,
+   "day_pct": 0.103,
+   "gap_pct": 0.0326,
+   "rvol": 1.4587,
+   "atr_pct": 0.0967,
+   "rsi2": 75.4257,
+   "atr": 14.9291,
+   "prev_low": 130.0,
+   "quote_time": 1787667137674
+  },
+  {
+   "symbol": "MRVL",
+   "style": "momentum",
+   "score": 1.3961,
+   "live": 244.75,
+   "prev_close": 229.29,
+   "day_pct": 0.0674,
+   "gap_pct": 0.0352,
+   "rvol": 0.9451,
+   "atr_pct": 0.0744,
+   "rsi2": 70.7205,
+   "atr": 18.2397,
+   "prev_low": 220.42,
+   "quote_time": 1787667130521
+  },
+  {
+   "symbol": "WDC",
+   "style": "mean-reversion",
+   "score": 0.9415,
+   "live": 438.03,
+   "prev_close": 435.38,
+   "day_pct": 0.0061,
+   "gap_pct": 0.0286,
+   "rvol": 0.3611,
+   "atr_pct": 0.0979,
+   "rsi2": 19.3186,
+   "atr": 42.9024,
+   "prev_low": 419.54,
+   "quote_time": 1787667137182
+  },
+  {
+   "symbol": "ADM",
+   "style": "mean-reversion",
+   "score": 0.876,
+   "live": 76.395,
+   "prev_close": 78.16,
+   "day_pct": -0.0226,
+   "gap_pct": -0.0079,
+   "rvol": 0.2684,
+   "atr_pct": 0.0319,
+   "rsi2": 4.974,
+   "atr": 2.4326,
+   "prev_low": 77.39,
+   "quote_time": 1787667131162
+  },
+  {
+   "symbol": "SMCI",
+   "style": "momentum",
+   "score": 0.8294,
+   "live": 38.01,
+   "prev_close": 35.17,
+   "day_pct": 0.0808,
+   "gap_pct": 0.0277,
+   "rvol": 0.7548,
+   "atr_pct": 0.0662,
+   "rsi2": 72.6356,
+   "atr": 2.5162,
+   "prev_low": 34.09,
+   "quote_time": 1787667137829
+  },
+  {
+   "symbol": "PWR",
+   "style": "mean-reversion",
+   "score": 0.8076,
+   "live": 619.215,
+   "prev_close": 616.78,
+   "day_pct": 0.0039,
+   "gap_pct": 0.0262,
+   "rvol": 0.3693,
+   "atr_pct": 0.0485,
+   "rsi2": 13.0121,
+   "atr": 30.0144,
+   "prev_low": 610.0,
+   "quote_time": 1787667137568
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 496,
+  "stage2": 49,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 52.6
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
