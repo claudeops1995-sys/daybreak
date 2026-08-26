@@ -1,0 +1,325 @@
+{
+ "schema": 1,
+ "date": "2026-08-26",
+ "stage": "official",
+ "forced": false,
+ "captured_at_et": "2026-08-26T10:09:32.689165-04:00",
+ "tape": {
+  "SPY": {
+   "last": 766.56,
+   "day_pct": 0.0008
+  },
+  "QQQ": {
+   "last": 710.85,
+   "day_pct": 0.0002
+  },
+  "VIX": {
+   "last": 15.44,
+   "day_pct": -0.0006
+  }
+ },
+ "sources": {
+  "alpaca": true,
+  "finnhub": true,
+  "ntfy": true,
+  "anthropic": false,
+  "polygon": false
+ },
+ "phase": "open",
+ "asof": "Wed Aug 26, 2026 \u00b7 10:10 AM ET",
+ "style_cards": {
+  "momentum": {
+   "symbol": "MOS",
+   "name": "Mosaic Company (The)",
+   "style": "momentum",
+   "score": 1.19,
+   "live": 25.11,
+   "prev_close": 24.270000457763672,
+   "quote_time": "2026-08-26 10:10:00.533109-04:00",
+   "atr": 1.0234266334809188,
+   "day_pct": 0.03481662654711748,
+   "gap_pct": 0.02348577190248391,
+   "rvol": 0.6579620668675535,
+   "atr_pct": 0.040726914930492394,
+   "reasons": [
+    "Gap +2.3% vs prior close",
+    "0.7\u00d7 normal volume pace",
+    "Within 0.3% of its 20-day high",
+    "Daily ATR 4.1% \u2014 real intraday range to work with"
+   ],
+   "plan": {
+    "entry": 25.11,
+    "stop": 24.6,
+    "target": 26.08,
+    "shares": 199,
+    "notional": 4997.0,
+    "risk_dollars": 101.0,
+    "reward_risk": 1.9,
+    "risk_sized": false,
+    "kind": "day",
+    "exit_rule": null,
+    "max_days": null,
+    "tgt_scale": 0.94,
+    "scale_note": "target scaled \u00d70.94 \u2014 late entry",
+    "status": "triggered",
+    "entry_kind": "market",
+    "entry_note": "Triggered \u2014 through the OR high, above VWAP.",
+    "time_exit": "15:45 ET"
+   },
+   "option": {
+    "contract": "MOS260828C00025000",
+    "expiry": "2026-08-28",
+    "dte": 2,
+    "strike": 25.0,
+    "mid": 0.57,
+    "contracts": 34,
+    "cost": 1955.0,
+    "max_loss": 1955.0,
+    "breakeven": 25.57,
+    "open_interest": 687,
+    "iv": 0.584,
+    "flags": [
+     "wide spread (43% of mid)"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Wed Aug 26, 2026 \u00b7 10:10 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "Mosaic Executive Says Brazil Fertilizer Industry Seeks 2 Billion-Real Subsidy Program To Ease Impact Of Iran War",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/news/26/08/61412868/mosaic-executive-says-brazil-fertilizer-industry-seeks-2-billion-real-subsidy-program-ease-impact-ir",
+     "ts": "2026-08-25T11:16:39-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 100.0
+   }
+  },
+  "mean-reversion": {
+   "symbol": "SNDK",
+   "name": "Sandisk Corporation",
+   "style": "mean-reversion",
+   "score": 1.35,
+   "live": 1465.25,
+   "prev_close": 1480.77001953125,
+   "quote_time": "2026-08-26 10:10:12.065948-04:00",
+   "atr": 152.10105235985472,
+   "day_pct": -0.005865204870908469,
+   "gap_pct": -0.017777962070383402,
+   "rvol": 0.43398016106540627,
+   "atr_pct": 0.10322047484877472,
+   "reasons": [
+    "RSI(2) at 8 \u2014 short-term washout",
+    "-7.8% over 3 sessions, still above its 200-day",
+    "0.2\u03c3 below its 20-day mean",
+    "Daily ATR 10.3% gives the bounce room to pay"
+   ],
+   "plan": {
+    "entry": 1465.25,
+    "stop": 1161.04,
+    "target": null,
+    "shares": 3,
+    "notional": 4396.0,
+    "risk_dollars": 913.0,
+    "reward_risk": null,
+    "risk_sized": false,
+    "kind": "swing",
+    "exit_rule": "RSI2>65",
+    "max_days": 10,
+    "tgt_scale": 1.0,
+    "scale_note": null,
+    "status": "stalking",
+    "entry_kind": "limit",
+    "entry_note": "Stalking \u2014 limit $1,465.25 at the flush zone (session low + 0.15 ATR).",
+    "time_exit": "swing \u00b7 \u226410d"
+   },
+   "option": {
+    "contract": "SNDK260828C01560000",
+    "expiry": "2026-08-28",
+    "dte": 2,
+    "strike": 1560.0,
+    "mid": 18.95,
+    "contracts": 1,
+    "cost": 1895.0,
+    "max_loss": 1895.0,
+    "breakeven": 1578.95,
+    "open_interest": 198,
+    "iv": 0.933,
+    "flags": [
+     "thin open interest"
+    ]
+   },
+   "phase": "open",
+   "phase_label": "Market open \u2014 live scan",
+   "asof": "Wed Aug 26, 2026 \u00b7 10:10 AM ET",
+   "earnings": {
+    "status": "clear",
+    "date": null
+   },
+   "news": [
+    {
+     "headline": "68% of AI Hyperscaler CapEx Could Go to Memory in 2027: Why Micron Matters",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/markets/tech/26/08/61435242/memory-68-percent-hyperscaler-capex-2027-micron",
+     "ts": "2026-08-26T10:05:08-04:00"
+    },
+    {
+     "headline": "AI Bubble Could Be Ready to Pop and Jim Cramer May Be the Warning Sign",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/markets/tech/26/08/61422736/ai-bubble-could-be-ready-to-pop-and-jim-cramer-may-be-the-warning-sign",
+     "ts": "2026-08-25T16:39:50-04:00"
+    },
+    {
+     "headline": "10 Information Technology Stocks Whale Activity In Today\u2019s Session",
+     "source": "benzinga",
+     "url": "https://www.benzinga.com/markets/options/26/08/61417352/10-information-technology-stocks-whale-activity-today-s-session",
+     "ts": "2026-08-25T13:35:16-04:00"
+    }
+   ],
+   "sentiment": {
+    "st_msgs": 30,
+    "st_bull_pct": 90.0,
+    "wsb_rank": 5,
+    "wsb_mentions": 95
+   }
+  }
+ },
+ "gates": {
+  "SNDK": [],
+  "MOS": [],
+  "INTC": [],
+  "TER": [
+   "RSI2>10"
+  ],
+  "ORCL": [],
+  "WMB": [
+   "gap<1.5% & rvol<1.5\u00d7"
+  ]
+ },
+ "watchlist": [
+  {
+   "symbol": "SNDK",
+   "style": "mean-reversion",
+   "score": 1.3499,
+   "live": 1472.085,
+   "prev_close": 1480.77,
+   "day_pct": -0.0059,
+   "gap_pct": -0.0178,
+   "rvol": 0.434,
+   "atr_pct": 0.1032,
+   "rsi2": 8.3714,
+   "atr": 152.1011,
+   "prev_low": 1467.01,
+   "quote_time": 1787753412065
+  },
+  {
+   "symbol": "MOS",
+   "style": "momentum",
+   "score": 1.1918,
+   "live": 25.115,
+   "prev_close": 24.27,
+   "day_pct": 0.0348,
+   "gap_pct": 0.0235,
+   "rvol": 0.658,
+   "atr_pct": 0.0407,
+   "rsi2": 91.8047,
+   "atr": 1.0234,
+   "prev_low": 23.66,
+   "quote_time": 1787753400533
+  },
+  {
+   "symbol": "INTC",
+   "style": "mean-reversion",
+   "score": 1.1731,
+   "live": 86.46,
+   "prev_close": 87.48,
+   "day_pct": -0.0117,
+   "gap_pct": -0.0075,
+   "rvol": 0.4428,
+   "atr_pct": 0.071,
+   "rsi2": 5.5901,
+   "atr": 6.1411,
+   "prev_low": 87.29,
+   "quote_time": 1787753417283
+  },
+  {
+   "symbol": "TER",
+   "style": "mean-reversion",
+   "score": 1.0931,
+   "live": 360.94,
+   "prev_close": 366.43,
+   "day_pct": -0.015,
+   "gap_pct": -0.0009,
+   "rvol": 0.1863,
+   "atr_pct": 0.0773,
+   "rsi2": 10.582,
+   "atr": 27.9007,
+   "prev_low": 360.65,
+   "quote_time": 1787753338062
+  },
+  {
+   "symbol": "ORCL",
+   "style": "momentum",
+   "score": 0.7267,
+   "live": 149.28,
+   "prev_close": 144.76,
+   "day_pct": 0.0312,
+   "gap_pct": 0.0155,
+   "rvol": 0.5604,
+   "atr_pct": 0.0449,
+   "rsi2": 83.6978,
+   "atr": 6.7009,
+   "prev_low": 142.51,
+   "quote_time": 1787753397456
+  },
+  {
+   "symbol": "WMB",
+   "style": "momentum",
+   "score": 0.7154,
+   "live": 74.28,
+   "prev_close": 71.08,
+   "day_pct": 0.045,
+   "gap_pct": 0.0011,
+   "rvol": 1.0632,
+   "atr_pct": 0.0275,
+   "rsi2": 91.2255,
+   "atr": 2.041,
+   "prev_low": 70.81,
+   "quote_time": 1787753418723
+  }
+ ],
+ "settings": {
+  "risk_sizing": false,
+  "risk_budget": 75.0,
+  "mom_gap_min": 0.015,
+  "mom_rvol_min": 1.5,
+  "mom_rr_min": 1.5,
+  "mr_rsi2_max": 10.0,
+  "mr_ret3_max": -0.03,
+  "min_rr": 1.2,
+  "earnings_guard": true,
+  "mr_stop_atr": 2.0,
+  "mr_exit_rsi": 65.0,
+  "mr_max_days": 10,
+  "mr_max_open": 5
+ },
+ "diag": {
+  "universe": 503,
+  "source": "S&P 500 constituents",
+  "passed_filters": 497,
+  "stage2": 49,
+  "quarantined": [],
+  "phase": "open",
+  "elapsed_s": 47.6
+ },
+ "changed_from_prelim": {
+  "prelim_found": false
+ }
+}
