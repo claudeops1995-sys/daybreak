@@ -11,11 +11,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 6",
-   "days_held": 6,
-   "last_close": 379.04,
-   "pnl": -200.0,
-   "rsi2": 28.3
+   "instruction": "HOLD \u2014 day 7",
+   "days_held": 7,
+   "last_close": 382.75,
+   "pnl": -156.0,
+   "rsi2": 55.3
   },
   {
    "symbol": "AVGO",
@@ -28,11 +28,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 5",
-   "days_held": 5,
-   "last_close": 358.76,
-   "pnl": -272.0,
-   "rsi2": 16.7
+   "instruction": "HOLD \u2014 day 6",
+   "days_held": 6,
+   "last_close": 356.74,
+   "pnl": -298.0,
+   "rsi2": 13.3
   },
   {
    "symbol": "DELL",
@@ -44,12 +44,13 @@
    "opened": "2026-08-19",
    "exit_rsi": 65.0,
    "max_days": 10,
-   "pending_exit": false,
-   "instruction": "HOLD \u2014 day 4",
-   "days_held": 4,
-   "last_close": 433.19,
-   "pnl": -5.0,
-   "rsi2": 21.1
+   "pending_exit": true,
+   "instruction": "SELL AT CLOSE \u2014 strength returned",
+   "days_held": 5,
+   "last_close": 451.5,
+   "pnl": 196.0,
+   "rsi2": 73.5,
+   "pending_reason": "rsi_exit"
   },
   {
    "symbol": "STLD",
@@ -62,11 +63,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 3",
-   "days_held": 3,
-   "last_close": 229.27,
-   "pnl": 223.0,
-   "rsi2": 48.0
+   "instruction": "HOLD \u2014 day 4",
+   "days_held": 4,
+   "last_close": 231.08,
+   "pnl": 263.0,
+   "rsi2": 60.4
   },
   {
    "symbol": "FLEX",
@@ -79,11 +80,11 @@
    "exit_rsi": 65.0,
    "max_days": 10,
    "pending_exit": false,
-   "instruction": "HOLD \u2014 day 2",
-   "days_held": 2,
-   "last_close": 106.65,
-   "pnl": -147.0,
-   "rsi2": 3.7
+   "instruction": "HOLD \u2014 day 3",
+   "days_held": 3,
+   "last_close": 109.25,
+   "pnl": -30.0,
+   "rsi2": 47.5
   }
  ],
  "closed": [],
@@ -91,6 +92,11 @@
   {
    "date": "2026-08-24",
    "symbol": "WDC",
+   "reason": "signal only \u2014 at capacity"
+  },
+  {
+   "date": "2026-08-25",
+   "symbol": "ADM",
    "reason": "signal only \u2014 at capacity"
   }
  ],
@@ -175,6 +181,11 @@
      "date": "2026-08-24",
      "close": 179.48,
      "pnl_pct": 0.0341
+    },
+    {
+     "date": "2026-08-25",
+     "close": 187.16,
+     "pnl_pct": 0.0784
     }
    ]
   },
@@ -187,6 +198,11 @@
      "date": "2026-08-24",
      "close": 103.62,
      "pnl_pct": -0.0411
+    },
+    {
+     "date": "2026-08-25",
+     "close": 112.09,
+     "pnl_pct": 0.0373
     }
    ]
   },
@@ -194,10 +210,22 @@
    "date": "2026-08-24",
    "symbol": "FCX",
    "entry": 78.88,
+   "closes": [
+    {
+     "date": "2026-08-25",
+     "close": 79.91,
+     "pnl_pct": 0.0131
+    }
+   ]
+  },
+  {
+   "date": "2026-08-25",
+   "symbol": "MRNA",
+   "entry": 153.2,
    "closes": []
   }
  ],
  "deployed": 24222.0,
- "updated_at_et": "2026-08-24T22:05:59.861101-04:00",
+ "updated_at_et": "2026-08-25T22:11:58.194061-04:00",
  "last_notified": "2026-08-25"
 }

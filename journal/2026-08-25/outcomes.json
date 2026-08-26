@@ -1,0 +1,55 @@
+{
+ "schema": 1,
+ "date": "2026-08-25",
+ "scored_at_et": "2026-08-25T22:11:56.349925-04:00",
+ "styles": {
+  "momentum": {
+   "symbol": "MRNA",
+   "style": "momentum",
+   "plan": {
+    "entry": 153.2,
+    "stop": 145.74,
+    "target": 167.26,
+    "shares": 32,
+    "status": "triggered",
+    "entry_kind": "market"
+   },
+   "model": {
+    "entry": 153.2,
+    "exit": 145.74,
+    "entry_kind": "market",
+    "filled_at_et": "2026-08-25 09:45:00-04:00",
+    "exit_reason": "stop",
+    "exit_at_et": "2026-08-25 14:10:00-04:00",
+    "realized_r": -1.0,
+    "mfe_r": 0.91,
+    "mae_r": 1.92,
+    "pnl_stock": -239.0
+   },
+   "fill_ref_price": 152.65,
+   "fill": {
+    "entry": 152.65,
+    "exit": 145.74,
+    "entry_kind": "market",
+    "filled_at_et": "2026-08-25 10:00:00-04:00",
+    "exit_reason": "stop",
+    "exit_at_et": "2026-08-25 14:10:00-04:00",
+    "realized_r": -1.0,
+    "mfe_r": 1.07,
+    "mae_r": 1.99,
+    "pnl_stock": -221.0
+   },
+   "slippage_r": 0.0,
+   "option": {
+    "contract": "MRNA260828C00152500",
+    "cost": 1580.0,
+    "exit_value": 525.0,
+    "pnl": -1055.0
+   }
+  },
+  "mean-reversion": {
+   "swing": true,
+   "note": "tracked in positions.json"
+  }
+ }
+}
